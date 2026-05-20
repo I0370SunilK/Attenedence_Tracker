@@ -24,6 +24,8 @@ public class Employee {
     private String avatarColor;
     private String status;
     @JsonIgnore
+    private String password;
+    @JsonIgnore
     private String role;
     @Transient
     private List<AttendanceRecord> attendanceRecords;
@@ -118,6 +120,14 @@ public class Employee {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
     }
 
     public String getRole() {

@@ -8,23 +8,24 @@ import attendance.example.backend.dto.PasswordChangeRequest;
 import attendance.example.backend.dto.SignupRequest;
 import attendance.example.backend.exception.ApiException;
 import attendance.example.backend.model.Employee;
-
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.UserRecord;
+import attendance.example.backend.util.PasswordEncoder;
 
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.*;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 
-import java.util.HashMap;
 import java.util.Locale;
-import java.util.Map;
+import java.util.UUID;
 
+/**
+ * Authentication Service
+ * Handles user signup, login, password changes and session management
+ * Uses MongoDB for user storage and local password hashing with PBKDF2
+ */
 @Service
 public class AuthService {
 
@@ -33,7 +34,6 @@ public class AuthService {
 
     private final EmployeeService employeeService;
     private final NotificationService notificationService;
-    private final String firebaseWebApiKey;
     private final String hardcodedAdminEmployeeId;
     private final String hardcodedAdminPassword;
     private final String hardcodedAdminRecoveryEmail;
@@ -41,34 +41,35 @@ public class AuthService {
     public AuthService(
             EmployeeService employeeService,
             NotificationService notificationService,
-            @Value("${firebase.web-api-key}") String firebaseWebApiKey,
             @Value("${app.admin.employee-id:Admin323}") String hardcodedAdminEmployeeId,
             @Value("${app.admin.password:Admin@srmap}") String hardcodedAdminPassword,
             @Value("${app.admin.recovery-email:karivilla.sunil@srmtech.com}") String hardcodedAdminRecoveryEmail
     ) {
         this.employeeService = employeeService;
         this.notificationService = notificationService;
-        this.firebaseWebApiKey = firebaseWebApiKey;
         this.hardcodedAdminEmployeeId = hardcodedAdminEmployeeId;
         this.hardcodedAdminPassword = hardcodedAdminPassword;
         this.hardcodedAdminRecoveryEmail = hardcodedAdminRecoveryEmail;
     }
 
+    /**
+     * Sign up a new employee
+     * Validates input, creates employee in MongoDB with hashed password
+     */
     public AuthResponse signup(SignupRequest request, HttpServletResponse response) throws Exception {
 
         validateSignup(request);
 
         employeeService.ensureUniqueSignup(request);
 
-        UserRecord userRecord = FirebaseAuth.getInstance().createUser(
-                new UserRecord.CreateRequest()
-                        .setEmail(employeeService.normalizeEmail(request.getEmail()))
-                        .setPassword(request.getPassword())
-        );
+        // Hash the password before storing
+        String hashedPassword = PasswordEncoder.encode(request.getPassword());
 
+        // Create employee with hashed password
         Employee employee = employeeService.createEmployee(
-                userRecord.getUid(),
-                request
+                UUID.randomUUID().toString(),
+                request,
+                hashedPassword
         );
 
         writeSessionCookie(response, employee.getId());
@@ -76,19 +77,23 @@ public class AuthService {
         return new AuthResponse(employee, employee.getRole());
     }
 
+    /**
+     * Login user with employee ID and password
+     * Verifies credentials against MongoDB
+     */
     public AuthResponse login(LoginRequest request, HttpServletResponse response) throws Exception{
 
-        String employeeId =
-                employeeService.normalizeEmployeeId(request.getEmpId());
-
+        String employeeId = employeeService.normalizeEmployeeId(request.getEmpId());
         String password = requirePassword(request.getPassword());
 
+        // Check hardcoded admin login
         if (isHardcodedAdminLogin(employeeId, password)) {
             Employee adminUser = buildHardcodedAdminUser();
             writeSessionCookie(response, HARDCODED_ADMIN_SESSION_ID);
             return new AuthResponse(adminUser, "admin");
         }
 
+        // Find employee by employee ID
         Employee employee = employeeService.findByEmployeeId(employeeId);
         if (employee == null) {
             throw new ApiException(HttpStatus.UNAUTHORIZED, "Invalid employee ID or password");
@@ -98,13 +103,19 @@ public class AuthService {
             throw new ApiException(HttpStatus.UNAUTHORIZED, "Account has been removed or deactivated");
         }
 
-        verifyFirebasePassword(employee.getEmail(), password);
+        // Verify password using local hashing
+        if (!PasswordEncoder.matches(password, employee.getPassword())) {
+            throw new ApiException(HttpStatus.UNAUTHORIZED, "Invalid employee ID or password");
+        }
 
         writeSessionCookie(response, employee.getId());
 
         return new AuthResponse(employee, employee.getRole());
     }
 
+    /**
+     * Get currently logged-in user from session cookie
+     */
     public Employee getCurrentUser(HttpServletRequest request) throws Exception {
 
         String employeeId = readSessionCookie(request);
@@ -124,6 +135,9 @@ public class AuthService {
         return employee;
     }
 
+    /**
+     * Logout user by clearing session cookie
+     */
     public void logout(HttpServletResponse response) {
 
         Cookie cookie = new Cookie(SESSION_COOKIE, "");
@@ -135,6 +149,9 @@ public class AuthService {
         response.addCookie(cookie);
     }
 
+    /**
+     * Check if email exists in database
+     */
     public boolean checkEmailExists(CheckEmailRequest request) throws Exception {
         if (request == null || request.getEmail() == null || request.getEmail().isBlank()) {
             return false;
@@ -143,6 +160,10 @@ public class AuthService {
         return employeeService.findByEmail(email).isPresent();
     }
 
+    /**
+     * Reset password via forgot password flow
+     * Updates password in MongoDB
+     */
     public void forgotPasswordReset(ForgotPasswordResetRequest request) throws Exception {
         if (request == null) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Request payload is required");
@@ -158,9 +179,9 @@ public class AuthService {
             throw new ApiException(HttpStatus.UNAUTHORIZED, "Account has been removed or deactivated");
         }
 
-        FirebaseAuth.getInstance().updateUser(
-                new UserRecord.UpdateRequest(employee.getId()).setPassword(newPassword)
-        );
+        // Hash new password and update in MongoDB
+        String hashedPassword = PasswordEncoder.encode(newPassword);
+        employeeService.updatePassword(employee.getId(), hashedPassword);
 
         notificationService.createNotification(
                 employee.getId(),
@@ -172,6 +193,10 @@ public class AuthService {
         );
     }
 
+    /**
+     * Change password for logged-in user
+     * Verifies current password and updates with new hashed password
+     */
     public void changePassword(HttpServletRequest request, PasswordChangeRequest payload) throws Exception {
         if (payload == null) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Password change payload is required");
@@ -194,15 +219,14 @@ public class AuthService {
             throw new ApiException(HttpStatus.UNAUTHORIZED, "Account has been removed or deactivated");
         }
 
-        try {
-            verifyFirebasePassword(employee.getEmail(), currentPassword);
-        } catch (Exception e) {
+        // Verify current password
+        if (!PasswordEncoder.matches(currentPassword, employee.getPassword())) {
             throw new ApiException(HttpStatus.UNAUTHORIZED, "Invalid current password");
         }
 
-        FirebaseAuth.getInstance().updateUser(
-                new UserRecord.UpdateRequest(employee.getId()).setPassword(newPassword)
-        );
+        // Hash new password and update in MongoDB
+        String hashedPassword = PasswordEncoder.encode(newPassword);
+        employeeService.updatePassword(employee.getId(), hashedPassword);
 
         notificationService.createNotification(
                 employee.getId(),
@@ -213,6 +237,8 @@ public class AuthService {
                 null
         );
     }
+
+    // ==================== Private Helper Methods ====================
 
     private boolean isValidIndianState(String state) {
         String[] indianStates = {
@@ -326,55 +352,6 @@ public class AuthService {
             throw new ApiException(HttpStatus.BAD_REQUEST, message);
         }
         return value.trim();
-    }
-
-    private void verifyFirebasePassword(String email, String password) {
-
-        try {
-
-            String url =
-                    "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key="
-                            + firebaseWebApiKey;
-
-            RestTemplate restTemplate = new RestTemplate();
-
-            Map<String, Object> body = new HashMap<>();
-
-            body.put("email", email.toLowerCase(Locale.ROOT));
-            body.put("password", password);
-            body.put("returnSecureToken", true);
-
-            HttpHeaders headers = new HttpHeaders();
-
-            headers.setContentType(MediaType.APPLICATION_JSON);
-
-            HttpEntity<Map<String, Object>> request =
-                    new HttpEntity<>(body, headers);
-
-            ResponseEntity<String> response =
-                    restTemplate.postForEntity(
-                            url,
-                            request,
-                            String.class
-                    );
-
-            if (!response.getStatusCode().is2xxSuccessful()) {
-
-                throw new ApiException(
-                        HttpStatus.UNAUTHORIZED,
-                        "Invalid employee ID or password"
-                );
-            }
-
-        } catch (Exception e) {
-
-            e.printStackTrace();
-
-            throw new ApiException(
-                    HttpStatus.UNAUTHORIZED,
-                    "Invalid employee ID or password"
-            );
-        }
     }
 
     private void writeSessionCookie(

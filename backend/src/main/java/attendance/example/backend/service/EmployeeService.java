@@ -55,7 +55,7 @@ public class EmployeeService {
         return employeeRepository.findByEmail(normalizeEmail(email)).map(this::sanitize);
     }
 
-    public Employee createEmployee(String uid, SignupRequest request) throws Exception {
+    public Employee createEmployee(String uid, SignupRequest request, String hashedPassword) throws Exception {
         Employee employee = new Employee();
         employee.setId(uid);
         employee.setEmployeeId(resolveEmployeeId(request));
@@ -64,6 +64,7 @@ public class EmployeeService {
         employee.setTeam(defaultIfBlank(request.getTeam(), "Platform"));
         employee.setEmail(normalizeEmail(request.getEmail()));
         employee.setCity(defaultIfBlank(request.getCity(), "Bengaluru"));
+        employee.setPassword(hashedPassword);
         
         // Validate and set state
         String state = request.getState();
@@ -82,6 +83,23 @@ public class EmployeeService {
         employee.setStatus("active");
 
         return sanitize(employeeRepository.save(employee));
+    }
+
+    /**
+     * Legacy method for backward compatibility with imports
+     */
+    public Employee createEmployee(String uid, SignupRequest request) throws Exception {
+        throw new ApiException(HttpStatus.BAD_REQUEST, "Password is required for employee creation");
+    }
+
+    /**
+     * Update employee password in MongoDB
+     */
+    public void updatePassword(String employeeId, String hashedPassword) throws Exception {
+        Employee employee = findById(employeeId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Employee not found"));
+        employee.setPassword(hashedPassword);
+        employeeRepository.save(employee);
     }
 
     public Employee requireEmployee(String id) throws Exception {

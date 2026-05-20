@@ -3,6 +3,7 @@ package attendance.example.backend.service;
 import attendance.example.backend.dto.SignupRequest;
 import attendance.example.backend.model.AttendanceRecord;
 import attendance.example.backend.model.Employee;
+import attendance.example.backend.util.PasswordEncoder;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Service;
@@ -113,7 +114,9 @@ public class ExcelImportService {
                         signupRequest.setAvatarColor("#" + Integer.toHexString(new Random().nextInt(0xffffff)));
 
                         try {
-                            employee = employeeService.createEmployee(UUID.randomUUID().toString(), signupRequest);
+                            // Hash the password before creating employee
+                            String hashedPassword = PasswordEncoder.encode(signupRequest.getPassword());
+                            employee = employeeService.createEmployee(UUID.randomUUID().toString(), signupRequest, hashedPassword);
                             createdEmployees.add(employeeId);
                         } catch (Exception e) {
                             errors.add("Row " + (rowIndex + 1) + ": Failed to create employee '" + employeeId + "' - " + e.getMessage());

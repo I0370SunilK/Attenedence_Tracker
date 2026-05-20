@@ -1,7 +1,6 @@
 package attendance.example.backend.exception;
 
 import attendance.example.backend.dto.ErrorResponse;
-import com.google.api.gax.rpc.ResourceExhaustedException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,19 +22,6 @@ public class GlobalExceptionHandler {
         HttpStatus status = exception.getStatus();
         return ResponseEntity.status(status)
                 .body(new ErrorResponse(exception.getMessage(), status.value()));
-    }
-
-    @ExceptionHandler(ResourceExhaustedException.class)
-    public ResponseEntity<ErrorResponse> handleResourceExhausted(
-            ResourceExhaustedException exception,
-            HttpServletRequest request
-    ) {
-        log.error("Quota exceeded while handling {} {}", request.getMethod(), request.getRequestURI(), exception);
-        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                .body(new ErrorResponse(
-                        "Service is temporarily busy. Please try again in a few minutes.",
-                        HttpStatus.SERVICE_UNAVAILABLE.value()
-                ));
     }
 
     @ExceptionHandler({
@@ -60,25 +46,9 @@ public class GlobalExceptionHandler {
             Exception exception,
             HttpServletRequest request
     ) {
-        ResourceExhaustedException quotaException = findCause(exception, ResourceExhaustedException.class);
-        if (quotaException != null) {
-            return handleResourceExhausted(quotaException, request);
-        }
-
         log.error("Unexpected error while handling {} {}", request.getMethod(), request.getRequestURI(), exception);
         HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
         return ResponseEntity.status(status)
                 .body(new ErrorResponse("Something went wrong on the server. Please try again.", status.value()));
-    }
-
-    private <T extends Throwable> T findCause(Throwable throwable, Class<T> type) {
-        Throwable current = throwable;
-        while (current != null) {
-            if (type.isInstance(current)) {
-                return type.cast(current);
-            }
-            current = current.getCause();
-        }
-        return null;
     }
 }
