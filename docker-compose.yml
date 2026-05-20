@@ -1,0 +1,37 @@
+# ============================================
+# SRM Attendance Tracker - Docker Compose
+# Local Development Configuration
+# ============================================
+services:
+  # All-in-one service (connects to MongoDB Atlas, no local MongoDB needed)
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ""  # Empty = use relative URLs through Nginx proxy
+    container_name: srm-attendance-tracker
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - SPRING_PROFILES_ACTIVE=dev
+      - MONGODB_URI=mongodb+srv://srm_attendance:qTI3E0sZnKZ5JZPx@cluster0.13sfdhc.mongodb.net/attendance_tracker?retryWrites=true&w=majority&appName=Cluster0
+      # Firebase - provide via .env file or hardcode here
+      # - FIREBASE_SERVICE_ACCOUNT_JSON=${FIREBASE_SERVICE_ACCOUNT_JSON}
+      # - FIREBASE_WEB_API_KEY=${FIREBASE_WEB_API_KEY}
+    volumes:
+      # Mount Firebase service account key at runtime
+      - ./backend/firebase/serviceAccountKey.json:/app/firebase/serviceAccountKey.json:ro
+    restart: unless-stopped
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  app-network:
+    driver: bridge

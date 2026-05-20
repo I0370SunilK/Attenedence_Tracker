@@ -1,0 +1,50 @@
+# ============================================
+# SRM Attendance Tracker - Render Blueprint
+# Single Docker web service: Nginx + Spring Boot
+# ============================================
+
+services:
+  - type: web
+    name: srm-attendance-tracker
+    env: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeploy: true
+
+    envVars:
+      - key: PORT
+        value: "8080"
+
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+
+      - key: SESSION_COOKIE_SECURE
+        value: "true"
+
+      - key: BACKEND_HEALTH_PATH
+        value: /backend
+
+      - key: FIREBASE_SERVICE_ACCOUNT_JSON
+        sync: false
+
+      - key: FIREBASE_WEB_API_KEY
+        sync: false
+
+      - key: MONGODB_URI
+        sync: false
+
+      - key: APP_CORS_ALLOWED_ORIGINS
+        sync: false
+
+      - key: ADMIN_EMPLOYEE_ID
+        sync: false
+
+      - key: ADMIN_PASSWORD
+        sync: false
+
+      - key: ADMIN_RECOVERY_EMAIL
+        sync: false
+
+      - key: JAVA_OPTS
+        value: "-Xmx512m -Xms256m"

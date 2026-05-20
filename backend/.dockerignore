@@ -1,0 +1,53 @@
+# ============================================
+# SRM Attendance Tracker - .dockerignore
+# ============================================
+
+# Git
+.git
+.gitattributes
+.gitignore
+
+# Build artifacts
+target/
+*.jar
+*.war
+
+# IDE files
+.idea/
+*.iml
+.vscode/
+.settings/
+.classpath
+.project
+.factorypath
+.springBeans
+
+# OS files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Docker
+Dockerfile
+.dockerignore
+
+# Logs
+*.log
+
+# Firebase service account key — NEVER include in Docker image!
+# For production (Render): Set FIREBASE_SERVICE_ACCOUNT_JSON env variable with the full JSON content
+# For local dev: The file is included from src/main/resources/firebase/ via classpath
+firebase/serviceAccountKey.json
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# Node (if any frontend artifacts in backend)
+node_modules/
+
+
+

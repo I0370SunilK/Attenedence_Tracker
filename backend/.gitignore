@@ -1,0 +1,52 @@
+HELP.md
+target/
+*.log
+.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### VS Code ###
+.vscode/
+
+#aprivate api key 
+src/main/resources/application.properties
+#firebase
+backend/src/main/resources/firebase/
+
+
+# frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# backend
+backend/target/
+
+# env
+.env
+*.env
