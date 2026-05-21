@@ -32,8 +32,7 @@ public class AttendanceService {
     public AttendanceService(
             AttendanceRecordRepository attendanceRecordRepository,
             EmployeeService employeeService,
-            NotificationService notificationService
-    ) {
+            NotificationService notificationService) {
         this.attendanceRecordRepository = attendanceRecordRepository;
         this.employeeService = employeeService;
         this.notificationService = notificationService;
@@ -49,7 +48,8 @@ public class AttendanceService {
         return readAttendance(employeeId, from, to);
     }
 
-    public Map<String, List<AttendanceRecord>> getAttendanceForEmployees(List<String> employeeIds, String from, String to) throws Exception {
+    public Map<String, List<AttendanceRecord>> getAttendanceForEmployees(List<String> employeeIds, String from,
+            String to) throws Exception {
         Map<String, List<AttendanceRecord>> response = new LinkedHashMap<>();
         for (String employeeId : employeeIds) {
             if (employeeId == null || employeeId.isBlank()) {
@@ -64,44 +64,42 @@ public class AttendanceService {
             String employeeId,
             int month,
             int year,
-            String type
-    ) throws Exception {
+            String type) throws Exception {
         employeeService.requireEmployee(employeeId);
         validateMonthYear(month, year);
-        
+
         String typeNormalized = type != null ? type.toUpperCase().trim() : "";
         if (typeNormalized.isEmpty()) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Attendance type is required");
         }
-        
+
         if (!ALLOWED_STATUSES.contains(typeNormalized)) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Invalid attendance type");
         }
 
         // Get all records for the employee
         List<AttendanceRecord> allRecords = readAttendance(employeeId);
-        
+
         // Filter by month, year, and type
         List<MonthlyDetailsResponse> result = new ArrayList<>();
         YearMonth targetMonth = YearMonth.of(year, month);
-        
+
         for (AttendanceRecord record : allRecords) {
             LocalDate date = LocalDate.parse(record.getDate());
             YearMonth recordMonth = YearMonth.from(date);
-            
+
             if (recordMonth.equals(targetMonth) && record.getStatus().equals(typeNormalized)) {
                 String dayName = date.getDayOfWeek().getDisplayName(TextStyle.FULL, Locale.ENGLISH);
                 result.add(new MonthlyDetailsResponse(
-                    record.getDate(),
-                    dayName,
-                    record.getStatus()
-                ));
+                        record.getDate(),
+                        dayName,
+                        record.getStatus()));
             }
         }
-        
+
         // Sort by date
         result.sort(Comparator.comparing(MonthlyDetailsResponse::getDate));
-        
+
         return result;
     }
 
@@ -109,13 +107,12 @@ public class AttendanceService {
         if (month < 1 || month > 12) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Month must be between 1 and 12");
         }
-        
+
         int currentYear = LocalDate.now().getYear();
         if (year < 2000 || year > currentYear + 1) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Year must be between 2000 and " + (currentYear + 1));
         }
     }
-
 
     public List<AttendanceRecord> markAttendance(String employeeId, AttendanceRecord request) throws Exception {
         employeeService.requireEmployee(employeeId);
@@ -130,13 +127,13 @@ public class AttendanceService {
             long streak = calculateStreak(allRecords);
             if (streak > 0) {
                 notificationService.createNotification(
-                    employeeId,
-                    "success",
-                    "🔥 " + streak + "-day streak!",
-                    "You've maintained attendance for " + streak + " working day" + (streak > 1 ? "s" : "") + " in a row.",
-                    null,
-                    null
-                );
+                        employeeId,
+                        "success",
+                        "🔥 " + streak + "-day streak!",
+                        "You've maintained attendance for " + streak + " working day" + (streak > 1 ? "s" : "")
+                                + " in a row.",
+                        null,
+                        null);
             }
         }
 
@@ -150,7 +147,8 @@ public class AttendanceService {
     }
 
     private long calculateStreak(List<AttendanceRecord> records) {
-        if (records.isEmpty()) return 0;
+        if (records.isEmpty())
+            return 0;
         records.sort(Comparator.comparing(AttendanceRecord::getDate).reversed());
         long streak = 0;
         java.time.LocalDate expected = java.time.LocalDate.now();
@@ -177,7 +175,7 @@ public class AttendanceService {
         List<AttendanceRecord> records;
         if (from != null && !from.isBlank() && to != null && !to.isBlank()) {
             records = new ArrayList<>(attendanceRecordRepository
-                    .findByEmployeeIdAndDateGreaterThanEqualAndDateLessThanEqual(employeeId, from, to));
+                    .findByEmployeeDateRange(employeeId, from, to));
         } else if (from != null && !from.isBlank()) {
             records = new ArrayList<>(attendanceRecordRepository
                     .findByEmployeeIdAndDateGreaterThanEqual(employeeId, from));
@@ -238,7 +236,8 @@ public class AttendanceService {
     }
 
     private AttendanceRecord upsertAttendance(String employeeId, AttendanceRecord record, boolean preserveEditedFlag) {
-        Optional<AttendanceRecord> existing = attendanceRecordRepository.findByEmployeeIdAndDate(employeeId, record.getDate());
+        Optional<AttendanceRecord> existing = attendanceRecordRepository.findByEmployeeIdAndDate(employeeId,
+                record.getDate());
         record.setId(existing.map(AttendanceRecord::getId).orElse(employeeId + ":" + record.getDate()));
         record.setEmployeeId(employeeId);
         record.setEdited(existing.isPresent() || (preserveEditedFlag && Boolean.TRUE.equals(record.getEdited())));
