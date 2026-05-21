@@ -31,7 +31,23 @@ if ! envsubst '${PORT}' < /etc/nginx/conf.d/default.conf.template > /etc/nginx/c
 fi
 echo "[DEBUG] Nginx config generated successfully"
 
-# 3. Start Spring Boot backend
+# 3. Start Nginx first so Render can detect the public PORT immediately.
+echo "[INFO] Starting Nginx on port ${NGINX_PORT}..."
+echo "[DEBUG] Checking frontend files..."
+ls -la /usr/share/nginx/html/ || true
+if [ ! -f /usr/share/nginx/html/index.html ]; then
+    echo "[ERROR] index.html not found in /usr/share/nginx/html/"
+    echo "[DEBUG] /usr/share/nginx/html contents:"
+    ls -la /usr/share/nginx/html/
+    exit 1
+fi
+echo "[DEBUG] Frontend files present"
+
+nginx -g "daemon off;" &
+NGINX_PID=$!
+echo "[INFO] Nginx started (PID: ${NGINX_PID})"
+
+# 4. Start Spring Boot backend
 echo "[INFO] Starting Spring Boot on port ${BACKEND_PORT}..."
 echo "[DEBUG] Checking runtime files and tools..."
 ls -la /app || true
@@ -104,22 +120,6 @@ if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
     echo "[DEBUG] Checking Spring Boot logs:"
     tail -20 /tmp/spring.log
 fi
-
-# 5. Start Nginx
-echo "[INFO] Starting Nginx on port ${NGINX_PORT}..."
-echo "[DEBUG] Checking frontend files..."
-ls -la /usr/share/nginx/html/ || true
-if [ ! -f /usr/share/nginx/html/index.html ]; then
-    echo "[ERROR] index.html not found in /usr/share/nginx/html/"
-    echo "[DEBUG] /usr/share/nginx/html contents:"
-    ls -la /usr/share/nginx/html/
-    exit 1
-fi
-echo "[DEBUG] Frontend files present"
-
-nginx -g "daemon off;" &
-NGINX_PID=$!
-echo "[INFO] Nginx started (PID: ${NGINX_PID})"
 
 echo "========================================"
 echo "Container started successfully!"
