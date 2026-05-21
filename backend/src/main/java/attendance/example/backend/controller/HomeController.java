@@ -28,10 +28,12 @@ public class HomeController {
         status.put("timestamp", java.time.Instant.now().toString());
         try {
             mongoTemplate.getDb().runCommand(new org.bson.Document("ping", 1));
-            status.put("mongodb", "CONNECTED");
+            status.put("mongodb", "ATLAS_CONNECTED");
+            status.put("database", mongoTemplate.getDb().getName());
         } catch (Exception e) {
-            status.put("mongodb", "DISCONNECTED");
+            status.put("mongodb", "ATLAS_DISCONNECTED");
             status.put("status", "DEGRADED");
+            status.put("mongodbError", e.getMessage());
         }
         return status;
     }

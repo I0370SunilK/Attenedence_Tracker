@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AttendanceRecord, AttendanceStatus, Employee, STATUS_COLOR } from "@/lib/types";
 import { countByStatus } from "@/lib/attendance";
 import { getAttendanceForEmployees, getEmployees, importEmployeeDetails } from "@/lib/api";
+import { ATTENDANCE_CHANGED_EVENT } from "@/lib/attendanceEvents";
 import StatCard from "@/components/StatCard";
 import { Users, CheckCircle2, AlertCircle, Trophy, FileText, BarChart3, CalendarX2, Loader2, Upload, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -167,19 +168,32 @@ export default function AdminDashboard() {
       .catch(() => setEmployees([]));
   }, []);
 
-  useEffect(() => {
+  const loadAttendanceData = () => {
     if (!employees.length) return;
-    getAttendanceForEmployees(employees.map(e => e.id), rangeFromKey, rangeToKey)
-      .then((data) => setRangeAttendance(data))
-      .catch(() => setRangeAttendance({}));
-  }, [employees, rangeFromKey, rangeToKey]);
+    const ids = employees.map((e) => e.id).filter(Boolean);
+    Promise.all([
+      getAttendanceForEmployees(ids, rangeFromKey, rangeToKey),
+      getAttendanceForEmployees(ids, todayKey, todayKey),
+    ])
+      .then(([rangeData, todayData]) => {
+        setRangeAttendance(rangeData);
+        setTodayAttendance(todayData);
+      })
+      .catch(() => {
+        setRangeAttendance({});
+        setTodayAttendance({});
+      });
+  };
 
   useEffect(() => {
-    if (!employees.length) return;
-    getAttendanceForEmployees(employees.map(e => e.id), todayKey, todayKey)
-      .then((data) => setTodayAttendance(data))
-      .catch(() => setTodayAttendance({}));
-  }, [employees, todayKey]);
+    loadAttendanceData();
+  }, [employees, rangeFromKey, rangeToKey, todayKey]);
+
+  useEffect(() => {
+    const onChanged = () => loadAttendanceData();
+    window.addEventListener(ATTENDANCE_CHANGED_EVENT, onChanged);
+    return () => window.removeEventListener(ATTENDANCE_CHANGED_EVENT, onChanged);
+  }, [employees, rangeFromKey, rangeToKey, todayKey]);
 
   const refreshDashboardData = async () => {
     const employeeData = await getEmployees();

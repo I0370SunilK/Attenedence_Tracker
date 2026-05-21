@@ -44,11 +44,22 @@ if ! command -v java >/dev/null 2>&1; then
     echo "[ERROR] Java runtime not found"
     exit 1
 fi
-if [ -n "${FIREBASE_SERVICE_ACCOUNT_JSON:-}" ]; then
-    echo "[INFO] FIREBASE_SERVICE_ACCOUNT_JSON environment variable is set"
-else
-    echo "[INFO] FIREBASE_SERVICE_ACCOUNT_JSON environment variable is not set"
+if [ -z "${MONGODB_URI:-}" ]; then
+    echo "[ERROR] MONGODB_URI is not set. MongoDB Atlas is required (no local database)."
+    exit 1
 fi
+case "${MONGODB_URI}" in
+  *localhost*|*127.0.0.1*)
+    echo "[ERROR] Local MongoDB is disabled. Set MONGODB_URI to your Atlas connection string."
+    exit 1
+    ;;
+  *ivqu5bo.mongodb.net*)
+    echo "[INFO] MongoDB Atlas target: cluster0.ivqu5bo.mongodb.net (credentials hidden)"
+    ;;
+  *)
+    echo "[WARN] MONGODB_URI does not reference cluster0.ivqu5bo.mongodb.net"
+    ;;
+esac
 
 nohup java -Dspring.profiles.active="${SPRING_PROFILES_ACTIVE:-prod}" \
      -Dcom.sun.management.jmxremote=false \

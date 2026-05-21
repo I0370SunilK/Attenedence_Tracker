@@ -1,4 +1,4 @@
-export type AttendanceStatus = "WFO" | "WFH" | "CLT" | "PTO" | "HOL";
+export type AttendanceStatus = "WFO" | "WFH" | "CLT" | "PTO" | "HOL" | "WHO";
 
 export const STATUS_LABEL: Record<AttendanceStatus, string> = {
   WFO: "Work From Office",
@@ -6,6 +6,7 @@ export const STATUS_LABEL: Record<AttendanceStatus, string> = {
   CLT: "Client Location",
   PTO: "Paid Time Off",
   HOL: "Holiday",
+  WHO: "Work From Home Office",
 };
 
 export const STATUS_BADGE: Record<AttendanceStatus, string> = {
@@ -14,6 +15,7 @@ export const STATUS_BADGE: Record<AttendanceStatus, string> = {
   CLT: "badge-status badge-clt",
   PTO: "badge-status badge-pto",
   HOL: "badge-status badge-hol",
+  WHO: "badge-status badge-wfh",
 };
 
 export const STATUS_COLOR: Record<AttendanceStatus, string> = {
@@ -22,10 +24,11 @@ export const STATUS_COLOR: Record<AttendanceStatus, string> = {
   CLT: "hsl(268 70% 60%)",
   PTO: "hsl(32 95% 54%)",
   HOL: "hsl(200 90% 50%)",
+  WHO: "hsl(188 75% 38%)",
 };
 
 export const PRIORITY: Record<AttendanceStatus, number> = {
-  WFO: 5, CLT: 4, WFH: 3, PTO: 2, HOL: 1,
+  WFO: 5, CLT: 4, WFH: 3, WHO: 3, PTO: 2, HOL: 1,
 };
 
 export type Designation =

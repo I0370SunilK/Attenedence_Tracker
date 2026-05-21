@@ -2,6 +2,9 @@
 # SRM Attendance Tracker - Multi-stage Docker Build
 # Optimized for Render deployment
 # Frontend (React + Vite) → Backend (Spring Boot) → Nginx (reverse proxy)
+#
+# REQUIRED at runtime: MONGODB_URI (MongoDB Atlas SRV — see .env.example)
+# No local MongoDB. Data persists only in Atlas cluster0.ivqu5bo.mongodb.net
 # ============================================
 
 # ---- Stage 1: Build Frontend (React + Vite) ----

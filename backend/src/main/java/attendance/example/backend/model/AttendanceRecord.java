@@ -8,6 +8,7 @@ public class AttendanceRecord {
 
     @Id
     private String id;
+    /** MongoDB {@link attendance.example.backend.model.Employee#id}, NOT the business code (e.g. A3748). */
     private String employeeId;
     private String date;
     private String status;

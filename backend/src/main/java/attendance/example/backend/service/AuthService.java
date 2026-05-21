@@ -37,19 +37,22 @@ public class AuthService {
     private final String hardcodedAdminEmployeeId;
     private final String hardcodedAdminPassword;
     private final String hardcodedAdminRecoveryEmail;
+    private final boolean sessionCookieSecure;
 
     public AuthService(
             EmployeeService employeeService,
             NotificationService notificationService,
             @Value("${app.admin.employee-id:Admin323}") String hardcodedAdminEmployeeId,
-            @Value("${app.admin.password:Admin@srmap}") String hardcodedAdminPassword,
-            @Value("${app.admin.recovery-email:karivilla.sunil@srmtech.com}") String hardcodedAdminRecoveryEmail
+            @Value("${app.admin.password:Admin@srmtech25}") String hardcodedAdminPassword,
+            @Value("${app.admin.recovery-email:karivilla.sunil@srmtech.com}") String hardcodedAdminRecoveryEmail,
+            @Value("${app.session.cookie-secure:false}") boolean sessionCookieSecure
     ) {
         this.employeeService = employeeService;
         this.notificationService = notificationService;
         this.hardcodedAdminEmployeeId = hardcodedAdminEmployeeId;
         this.hardcodedAdminPassword = hardcodedAdminPassword;
         this.hardcodedAdminRecoveryEmail = hardcodedAdminRecoveryEmail;
+        this.sessionCookieSecure = sessionCookieSecure;
     }
 
     /**
@@ -143,6 +146,7 @@ public class AuthService {
         Cookie cookie = new Cookie(SESSION_COOKIE, "");
 
         cookie.setHttpOnly(true);
+        cookie.setSecure(sessionCookieSecure);
         cookie.setPath("/");
         cookie.setMaxAge(0);
 
@@ -362,6 +366,7 @@ public class AuthService {
         Cookie cookie = new Cookie(SESSION_COOKIE, employeeUid);
 
         cookie.setHttpOnly(true);
+        cookie.setSecure(sessionCookieSecure);
         cookie.setPath("/");
         cookie.setMaxAge(60 * 60 * 24 * 7);
 

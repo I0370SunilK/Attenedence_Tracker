@@ -299,7 +299,7 @@ export SERVER_SERVLET_CONTEXT_PATH=/api
 
 # Admin Credentials
 export APP_ADMIN_EMPLOYEE_ID=Admin323
-export APP_ADMIN_PASSWORD=Admin@srmap
+export APP_ADMIN_PASSWORD=Admin@srmtech25
 
 # CORS
 export APP_CORS_ALLOWED_ORIGINS=http://localhost:5173

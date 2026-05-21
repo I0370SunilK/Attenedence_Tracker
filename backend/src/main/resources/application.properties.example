@@ -1,0 +1,4 @@
+# Copy to application.properties (optional). MONGODB_URI in .env is required at runtime.
+spring.data.mongodb.uri=${MONGODB_URI}
+spring.data.mongodb.auto-index-creation=true
+server.port=8080

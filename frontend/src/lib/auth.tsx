@@ -18,7 +18,10 @@ const SESSION_KEY = "att_session";
 function loadSession(): { role: Role; user: Employee } | null {
   try {
     const raw = localStorage.getItem(SESSION_KEY);
-    return raw ? JSON.parse(raw) : null;
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { role?: Role; user?: Employee };
+    if (!parsed?.user?.id) return null;
+    return { role: parsed.role ?? "user", user: parsed.user };
   } catch {
     return null;
   }
@@ -55,7 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem(SESSION_KEY);
       })
       .catch(() => {
-        // If we already restored from local storage, keep the current UI state.
+        // Session cache only — employee/attendance data always comes from MongoDB Atlas via API.
         if (initialSession) {
           return;
         }

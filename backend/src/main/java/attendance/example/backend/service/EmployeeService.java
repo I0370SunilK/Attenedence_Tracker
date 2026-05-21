@@ -6,6 +6,9 @@ import attendance.example.backend.model.DeletionRequest;
 import attendance.example.backend.model.Employee;
 import attendance.example.backend.repository.DeletionRequestRepository;
 import attendance.example.backend.repository.EmployeeRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
@@ -20,6 +23,8 @@ import java.util.UUID;
 @Service
 public class EmployeeService {
 
+    private static final Logger log = LoggerFactory.getLogger(EmployeeService.class);
+
     private final EmployeeRepository employeeRepository;
     private final DeletionRequestRepository deletionRequestRepository;
     private final NotificationService notificationService;
@@ -27,7 +32,7 @@ public class EmployeeService {
     public EmployeeService(
             EmployeeRepository employeeRepository,
             DeletionRequestRepository deletionRequestRepository,
-            NotificationService notificationService
+            @Lazy NotificationService notificationService
     ) {
         this.employeeRepository = employeeRepository;
         this.deletionRequestRepository = deletionRequestRepository;
@@ -82,7 +87,10 @@ public class EmployeeService {
         employee.setRole(resolveRole(employee.getEmployeeId()));
         employee.setStatus("active");
 
-        return sanitize(employeeRepository.save(employee));
+        Employee saved = sanitize(employeeRepository.save(employee));
+        log.info("Employee persisted to MongoDB Atlas — employeeId={}, mongoDocumentId={}",
+                saved.getEmployeeId(), saved.getId());
+        return saved;
     }
 
     /**
@@ -102,8 +110,28 @@ public class EmployeeService {
         employeeRepository.save(employee);
     }
 
-    public Employee requireEmployee(String id) throws Exception {
-        return findById(id).orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Employee not found"));
+    /**
+     * Resolves an employee by MongoDB document id ({@code Employee.id}) or business code ({@code Employee.employeeId}, e.g. A3748).
+     */
+    public Employee requireEmployee(String idOrBusinessEmployeeId) throws Exception {
+        if (idOrBusinessEmployeeId == null || idOrBusinessEmployeeId.isBlank()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Employee identifier is required");
+        }
+        String key = idOrBusinessEmployeeId.trim();
+        Optional<Employee> byMongoId = findById(key);
+        if (byMongoId.isPresent()) {
+            return byMongoId.get();
+        }
+        Employee byBusinessId = findByEmployeeId(key);
+        if (byBusinessId != null) {
+            return byBusinessId;
+        }
+        throw new ApiException(HttpStatus.NOT_FOUND, "Employee not found");
+    }
+
+    /** Canonical MongoDB id used in attendance_records and notifications. */
+    public String resolveInternalEmployeeId(String idOrBusinessEmployeeId) throws Exception {
+        return requireEmployee(idOrBusinessEmployeeId).getId();
     }
 
     public void ensureUniqueSignup(SignupRequest request) throws Exception {

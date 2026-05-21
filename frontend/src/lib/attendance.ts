@@ -13,8 +13,10 @@ export function isSameMonth(date: string, ref = new Date()) {
 }
 
 export function countByStatus(records: AttendanceRecord[]) {
-  const c: Record<AttendanceStatus, number> = { WFO:0, WFH:0, CLT:0, PTO:0, HOL:0 };
-  records.forEach(r => { c[r.status]++; });
+  const c: Record<AttendanceStatus, number> = { WFO:0, WFH:0, CLT:0, PTO:0, HOL:0, WHO:0 };
+  records.forEach(r => {
+    if (r.status in c) c[r.status]++;
+  });
   return c;
 }
 
@@ -74,19 +76,24 @@ export function weeklyCounts(records: AttendanceRecord[], ref = new Date()) {
   return countByStatus(week);
 }
 
-/** Consecutive working days (mon-fri) marked with WFO/WFH/CLT going back from today. */
+/** Consecutive working days (Mon–Fri) with WFO/WFH/CLT, walking backward from today. PTO/HOL do not break the streak. */
 export function attendanceStreak(records: AttendanceRecord[]) {
-  const map = new Map(records.map(r => [r.date, r]));
+  const map = new Map(records.map((r) => [r.date, r]));
   let streak = 0;
   const d = new Date();
-  // go backwards up to 60 days
+  d.setHours(0, 0, 0, 0);
   for (let i = 0; i < 60; i++) {
     const dow = d.getDay();
     if (dow !== 0 && dow !== 6) {
       const r = map.get(dateKey(d));
       if (!r) break;
-      if (r.status === "WFO" || r.status === "WFH" || r.status === "CLT") streak++;
-      else break;
+      if (r.status === "WFO" || r.status === "WFH" || r.status === "CLT") {
+        streak++;
+      } else if (r.status === "PTO" || r.status === "HOL") {
+        // marked leave day — skip without breaking prior working days
+      } else {
+        break;
+      }
     }
     d.setDate(d.getDate() - 1);
   }

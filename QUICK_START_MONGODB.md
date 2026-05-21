@@ -120,7 +120,7 @@ mongosh attendance_tracker
 
 ### Admin Login:
 - **Employee ID:** `Admin323`
-- **Password:** `Admin@srmap`
+- **Password:** `Admin@srmtech25`
 
 ### Test Employee (Create via Signup):
 - **Employee ID:** `I1234` (or `A1234`)

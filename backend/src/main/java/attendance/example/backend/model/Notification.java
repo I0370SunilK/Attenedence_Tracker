@@ -7,6 +7,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 public class Notification {
     @Id
     private String id;
+    /** MongoDB {@link attendance.example.backend.model.Employee#id}, NOT the business code (e.g. A3748). */
     private String employeeId;
     private String type;       // "info", "warning", "success", "alert"
     private String title;

@@ -3,6 +3,7 @@ import { useAuth } from "@/lib/auth";
 import { AttendanceRecord, AttendanceStatus, STATUS_BADGE } from "@/lib/types";
 import { attendanceStreak, countByStatus, dateKey, greeting, isSameMonth, notMarkedThisMonth, weeklyCounts } from "@/lib/attendance";
 import { getAttendance, markAttendance } from "@/lib/api";
+import { emitAttendanceChanged } from "@/lib/attendanceEvents";
 import StatCard from "@/components/StatCard";
 import ClickableStatCard from "@/components/ClickableStatCard";
 import AttendanceDetailsModal from "@/components/AttendanceDetailsModal";
@@ -45,36 +46,31 @@ export default function Dashboard() {
 
   const upsert = async (date: string, s: AttendanceStatus) => {
     if (!user) return;
-    const existing = records.find(r => r.date === date);
-    const next = records.filter(r => r.date !== date);
-    const newRecord: AttendanceRecord = {
-      date,
-      status: s,
-      markedAt: new Date().toISOString(),
-      edited: !!existing,
-    };
-    const updated = [...next, newRecord];
-    setRecords(updated);
     try {
-      await markAttendance(user.id, {
-        date: newRecord.date,
-        status: newRecord.status,
-        markedAt: newRecord.markedAt,
+      const saved = await markAttendance(user.id, {
+        date,
+        status: s,
+        markedAt: new Date().toISOString(),
       });
-    } catch {
-      // keep local state if backend is unavailable
+      setRecords(saved);
+      emitAttendanceChanged();
+      return true;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to save attendance";
+      toast.error(message);
+      return false;
     }
   };
 
-  const handleConfirm = (s: AttendanceStatus) => {
-    upsert(todayKey, s);
+  const handleConfirm = async (s: AttendanceStatus) => {
+    const ok = await upsert(todayKey, s);
     setOpen(false);
-    toast.success(`Marked as ${s} for today`);
+    if (ok) toast.success(`Marked as ${s} for today`);
   };
 
-  const handleCalendarUpdate = (date: string, s: AttendanceStatus) => {
-    upsert(date, s);
-    toast.success(`Updated ${format(new Date(date), "d MMM")} to ${s}`);
+  const handleCalendarUpdate = async (date: string, s: AttendanceStatus) => {
+    const ok = await upsert(date, s);
+    if (ok) toast.success(`Updated ${format(new Date(date), "d MMM")} to ${s}`);
   };
 
   const handleCardClick = (type: string) => {

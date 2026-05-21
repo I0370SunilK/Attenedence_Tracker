@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { AttendanceRecord, AttendanceStatus, STATUS_BADGE, STATUS_COLOR } from "@/lib/types";
 import { getAttendance } from "@/lib/api";
+import { ATTENDANCE_CHANGED_EVENT } from "@/lib/attendanceEvents";
 import { countByStatus } from "@/lib/attendance";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ import DateRangePicker, { RangeContext } from "@/components/DateRangePicker";
 import { defaultRange, filterRecords, rangeDays } from "@/lib/dateRange";
 import ExportDialog from "@/components/ExportDialog";
 import { Download } from "lucide-react";
+import { toast } from "sonner";
 
 export default function Timesheets() {
   const { user } = useAuth();
@@ -22,14 +24,27 @@ export default function Timesheets() {
   const [range, setRange] = useState(defaultRange());
   const [exportOpen, setExportOpen] = useState(false);
 
-  useEffect(() => {
-    if (!user) return;
+  const loadAttendance = () => {
+    if (!user?.id) return;
     const from = range.from ? format(range.from, "yyyy-MM-dd") : undefined;
     const to = range.to ? format(range.to, "yyyy-MM-dd") : undefined;
     getAttendance(user.id, from, to)
       .then(setAll)
-      .catch(() => setAll([]));
-  }, [user, range]);
+      .catch((err) => {
+        setAll([]);
+        toast.error(err instanceof Error ? err.message : "Failed to load attendance");
+      });
+  };
+
+  useEffect(() => {
+    loadAttendance();
+  }, [user?.id, range]);
+
+  useEffect(() => {
+    const onChanged = () => loadAttendance();
+    window.addEventListener(ATTENDANCE_CHANGED_EVENT, onChanged);
+    return () => window.removeEventListener(ATTENDANCE_CHANGED_EVENT, onChanged);
+  }, [user?.id, range]);
 
   const filtered = useMemo(
     () => all.sort((a, b) => b.date.localeCompare(a.date)),

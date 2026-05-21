@@ -1,0 +1,43 @@
+package attendance.example.backend.config;
+
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
+import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+import java.io.IOException;
+
+/**
+ * Logs incoming API requests (Frontend → Controller entry point).
+ */
+@Component
+@Order(Ordered.HIGHEST_PRECEDENCE + 10)
+public class ApiRequestLoggingFilter extends OncePerRequestFilter {
+
+    private static final Logger log = LoggerFactory.getLogger(ApiRequestLoggingFilter.class);
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getRequestURI();
+        return path != null && (path.startsWith("/assets") || path.endsWith(".js") || path.endsWith(".css")
+                || path.endsWith(".ico") || path.endsWith(".svg"));
+    }
+
+    @Override
+    protected void doFilterInternal(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            FilterChain filterChain
+    ) throws ServletException, IOException {
+        if (request.getRequestURI() != null && request.getRequestURI().startsWith("/api")) {
+            log.info("API request received — {} {}", request.getMethod(), request.getRequestURI());
+        }
+        filterChain.doFilter(request, response);
+    }
+}

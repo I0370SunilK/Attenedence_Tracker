@@ -25,12 +25,7 @@ services:
       - key: BACKEND_HEALTH_PATH
         value: /backend
 
-      - key: FIREBASE_SERVICE_ACCOUNT_JSON
-        sync: false
-
-      - key: FIREBASE_WEB_API_KEY
-        sync: false
-
+      # Set in Render dashboard — Spring reads MONGODB_URI via application.yml
       - key: MONGODB_URI
         sync: false
 

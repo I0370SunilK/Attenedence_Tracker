@@ -11,13 +11,16 @@ import java.util.*;
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
+    private final EmployeeService employeeService;
 
-    public NotificationService(NotificationRepository notificationRepository) {
+    public NotificationService(NotificationRepository notificationRepository, EmployeeService employeeService) {
         this.notificationRepository = notificationRepository;
+        this.employeeService = employeeService;
     }
 
-    public List<Notification> getNotificationsByEmployee(String employeeId) throws Exception {
-        List<Notification> list = new ArrayList<>(notificationRepository.findByEmployeeId(employeeId));
+    public List<Notification> getNotificationsByEmployee(String employeeKey) throws Exception {
+        String internalId = employeeService.resolveInternalEmployeeId(employeeKey);
+        List<Notification> list = new ArrayList<>(notificationRepository.findByEmployeeId(internalId));
         list.sort((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()));
         if (list.size() > 50) {
             list = list.subList(0, 50);
@@ -25,16 +28,18 @@ public class NotificationService {
         return list;
     }
 
-    public List<Notification> getUnreadNotificationsByEmployee(String employeeId) throws Exception {
-        List<Notification> list = new ArrayList<>(notificationRepository.findByEmployeeIdAndReadFalse(employeeId));
+    public List<Notification> getUnreadNotificationsByEmployee(String employeeKey) throws Exception {
+        String internalId = employeeService.resolveInternalEmployeeId(employeeKey);
+        List<Notification> list = new ArrayList<>(notificationRepository.findByEmployeeIdAndReadFalse(internalId));
         list.sort((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()));
         return list;
     }
 
-    public Notification createNotification(String employeeId, String type, String title, String message,
+    public Notification createNotification(String employeeKey, String type, String title, String message,
                                             String actionLabel, String actionRoute) throws Exception {
+        String internalId = employeeService.resolveInternalEmployeeId(employeeKey);
         Notification notification = new Notification();
-        notification.setEmployeeId(employeeId);
+        notification.setEmployeeId(internalId);
         notification.setType(type);
         notification.setTitle(title);
         notification.setMessage(message);
@@ -53,8 +58,9 @@ public class NotificationService {
         });
     }
 
-    public void markAllAsRead(String employeeId) throws Exception {
-        List<Notification> unreadNotifications = notificationRepository.findByEmployeeIdAndReadFalse(employeeId);
+    public void markAllAsRead(String employeeKey) throws Exception {
+        String internalId = employeeService.resolveInternalEmployeeId(employeeKey);
+        List<Notification> unreadNotifications = notificationRepository.findByEmployeeIdAndReadFalse(internalId);
         for (Notification notification : unreadNotifications) {
             notification.setRead(true);
         }
