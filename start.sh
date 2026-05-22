@@ -119,6 +119,7 @@ if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
     echo "[WARNING] Spring Boot health check timeout after $((MAX_RETRIES * RETRY_INTERVAL))s"
     echo "[DEBUG] Checking Spring Boot logs:"
     tail -20 /tmp/spring.log
+    exit 1
 fi
 
 echo "========================================"

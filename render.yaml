@@ -42,4 +42,4 @@ services:
         sync: false
 
       - key: JAVA_OPTS
-        value: "-Xmx512m -Xms256m"
+        value: "-Xmx256m -Xms128m"
