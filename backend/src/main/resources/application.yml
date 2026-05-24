@@ -13,10 +13,6 @@ app:
   mongodb:
     required-host: cluster0.ivqu5bo.mongodb.net
     database: attendance_tracker
-  admin:
-    employee-id: ${ADMIN_EMPLOYEE_ID:Admin323}
-    password: ${ADMIN_PASSWORD:Admin@srmtech25}
-    recovery-email: ${ADMIN_RECOVERY_EMAIL:karivilla.sunil@srmtech.com}
   cors:
     allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000}
   session:

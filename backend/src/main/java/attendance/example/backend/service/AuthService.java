@@ -21,41 +21,31 @@ import org.springframework.stereotype.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Locale;
 import java.util.UUID;
 
 /**
  * Authentication Service
  * Handles user signup, login, password changes and session management
  * Uses MongoDB for user storage and local password hashing with PBKDF2
+ * Admin role is determined dynamically from the employee document in MongoDB.
  */
 @Service
 public class AuthService {
 
     private static final Logger log = LoggerFactory.getLogger(AuthService.class);
     private static final String SESSION_COOKIE = "att_session_uid";
-    private static final String HARDCODED_ADMIN_SESSION_ID = "hardcoded-admin";
 
     private final EmployeeService employeeService;
     private final NotificationService notificationService;
-    private final String hardcodedAdminEmployeeId;
-    private final String hardcodedAdminPassword;
-    private final String hardcodedAdminRecoveryEmail;
     private final boolean sessionCookieSecure;
 
     public AuthService(
             EmployeeService employeeService,
             NotificationService notificationService,
-            @Value("${app.admin.employee-id:Admin323}") String hardcodedAdminEmployeeId,
-            @Value("${app.admin.password:Admin@srmtech25}") String hardcodedAdminPassword,
-            @Value("${app.admin.recovery-email:karivilla.sunil@srmtech.com}") String hardcodedAdminRecoveryEmail,
             @Value("${app.session.cookie-secure:false}") boolean sessionCookieSecure
     ) {
         this.employeeService = employeeService;
         this.notificationService = notificationService;
-        this.hardcodedAdminEmployeeId = hardcodedAdminEmployeeId;
-        this.hardcodedAdminPassword = hardcodedAdminPassword;
-        this.hardcodedAdminRecoveryEmail = hardcodedAdminRecoveryEmail;
         this.sessionCookieSecure = sessionCookieSecure;
     }
 
@@ -87,20 +77,14 @@ public class AuthService {
     /**
      * Login user with employee ID and password
      * Verifies credentials against MongoDB
+     * Role is taken dynamically from the employee document.
      */
     public AuthResponse login(LoginRequest request, HttpServletResponse response) throws Exception{
 
         String employeeId = employeeService.normalizeEmployeeId(request.getEmpId());
         String password = requirePassword(request.getPassword());
 
-        // Check hardcoded admin login
-        if (isHardcodedAdminLogin(employeeId, password)) {
-            Employee adminUser = buildHardcodedAdminUser();
-            writeSessionCookie(response, HARDCODED_ADMIN_SESSION_ID);
-            return new AuthResponse(adminUser, "admin");
-        }
-
-        // Find employee by employee ID
+        // Find employee by employee ID from MongoDB
         Employee employee = employeeService.findByEmployeeId(employeeId);
         if (employee == null) {
             log.info("Login failed: employeeId={} not found", employeeId);
@@ -132,10 +116,6 @@ public class AuthService {
 
         if (employeeId == null || employeeId.isBlank()) {
             return null;
-        }
-
-        if (HARDCODED_ADMIN_SESSION_ID.equals(employeeId)) {
-            return buildHardcodedAdminUser();
         }
 
         Employee employee = employeeService.findById(employeeId).orElse(null);
@@ -221,10 +201,6 @@ public class AuthService {
             throw new ApiException(HttpStatus.UNAUTHORIZED, "Not authenticated");
         }
 
-        if (HARDCODED_ADMIN_SESSION_ID.equals(sessionEmployeeId)) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "Password change is not supported for this account");
-        }
-
         Employee employee = employeeService.requireEmployee(sessionEmployeeId);
         if (employee.getStatus() != null && employee.getStatus().equalsIgnoreCase("inactive")) {
             throw new ApiException(HttpStatus.UNAUTHORIZED, "Account has been removed or deactivated");
@@ -253,10 +229,6 @@ public class AuthService {
         String sessionEmployeeId = readSessionCookie(request);
         if (sessionEmployeeId == null || sessionEmployeeId.isBlank()) {
             throw new ApiException(HttpStatus.UNAUTHORIZED, "Not authenticated");
-        }
-
-        if (HARDCODED_ADMIN_SESSION_ID.equals(sessionEmployeeId)) {
-            throw new ApiException(HttpStatus.BAD_REQUEST, "Profile update is not supported for this account");
         }
 
         Employee employee = employeeService.requireEmployee(sessionEmployeeId);
@@ -414,26 +386,5 @@ public class AuthService {
         }
 
         return null;
-    }
-
-    private boolean isHardcodedAdminLogin(String employeeId, String password) {
-        return hardcodedAdminEmployeeId.equalsIgnoreCase(employeeId)
-                && hardcodedAdminPassword.equals(password);
-    }
-
-    private Employee buildHardcodedAdminUser() {
-        Employee employee = new Employee();
-        employee.setId(HARDCODED_ADMIN_SESSION_ID);
-        employee.setEmployeeId(hardcodedAdminEmployeeId.toUpperCase(Locale.ROOT));
-        employee.setFullName("System Administrator");
-        employee.setDesignation("Manager");
-        employee.setTeam("Administration");
-        employee.setEmail(hardcodedAdminRecoveryEmail);
-        employee.setCity("Chennai");
-        employee.setState("Tamil Nadu");
-        employee.setCountry("India");
-        employee.setAvatarColor("#DC2626");
-        employee.setRole("admin");
-        return employee;
     }
 }

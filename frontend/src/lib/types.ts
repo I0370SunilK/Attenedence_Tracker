@@ -77,6 +77,9 @@ export interface Employee {
   state: string;
   country: string;
   avatarColor: string;
+  role?: "user" | "admin";
+  status?: string;
+  password?: string;
 }
 
 export interface AttendanceRecord {

@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { AttendanceRecord, AttendanceStatus, Employee, STATUS_COLOR } from "@/lib/types";
 import { countByStatus } from "@/lib/attendance";
 import { getAttendanceForEmployees, getEmployees, importEmployeeDetails, previewEmployeeDetails, type EmployeeDetailsImportResult } from "@/lib/api";
 import { ATTENDANCE_CHANGED_EVENT } from "@/lib/attendanceEvents";
 import StatCard from "@/components/StatCard";
-import { Users, CheckCircle2, AlertCircle, Trophy, FileText, BarChart3, CalendarX2, Loader2, Upload, UserPlus } from "lucide-react";
+import { Users, CheckCircle2, AlertCircle, Trophy, FileText, BarChart3, CalendarX2, Loader2, Upload, UserPlus, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { eachDayOfInterval, format } from "date-fns";
@@ -21,6 +22,7 @@ type RankRow = {
 
 export default function AdminDashboard() {
   const today = new Date();
+  const navigate = useNavigate();
   const [range, setRange] = useState(defaultRange());
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [rangeAttendance, setRangeAttendance] = useState<Record<string, AttendanceRecord[]>>({});
@@ -375,6 +377,10 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-8">
+        <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard")} className="-ml-2">
+          <ArrowLeft className="h-4 w-4 mr-1" /> Back to Employee Dashboard
+        </Button>
+
         <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
          <div>
            <h1 className="text-2xl font-bold">Admin Overview</h1>

@@ -3,8 +3,10 @@ import { useAuth } from "@/lib/auth";
 import AuthLoadingScreen from "@/components/AuthLoadingScreen";
 
 export default function Index() {
-  const { user, role, isReady } = useAuth();
+  const { user, isReady } = useAuth();
   if (!isReady) return <AuthLoadingScreen />;
   if (!user) return <Navigate to="/login" replace />;
-  return <Navigate to={role === "admin" ? "/admin" : "/dashboard"} replace />;
+  // Always go to employee dashboard first, regardless of role
+  // Admin can access admin dashboard via profile dropdown menu
+  return <Navigate to="/dashboard" replace />;
 }

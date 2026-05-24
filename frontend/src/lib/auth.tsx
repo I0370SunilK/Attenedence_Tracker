@@ -32,7 +32,16 @@ function saveSession(role: Role, user: Employee) {
   localStorage.setItem(SESSION_KEY, JSON.stringify({ role, user }));
 }
 
+/**
+ * Derive role from the employee document.
+ * Uses the role field from MongoDB first, falls back to employeeId check for backward compatibility.
+ */
 function deriveRole(user: Employee): Role {
+  // If role is explicitly set in MongoDB, use it
+  if (user.role === "admin" || user.role === "user") {
+    return user.role as Role;
+  }
+  // Fallback: derive from employeeId prefix (backward compatibility)
   return user.employeeId.toLowerCase().startsWith("admin") ? "admin" : "user";
 }
 
@@ -92,7 +101,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const updateUser = (nextUser: Employee | null) => {
     setUser(nextUser);
     if (nextUser) {
-      saveSession(role, nextUser);
+      // Re-derive role from updated user data
+      const newRole = deriveRole(nextUser);
+      setRoleState(newRole);
+      saveSession(newRole, nextUser);
     } else {
       localStorage.removeItem(SESSION_KEY);
     }
