@@ -5,6 +5,7 @@ import attendance.example.backend.dto.CheckEmailRequest;
 import attendance.example.backend.dto.ForgotPasswordResetRequest;
 import attendance.example.backend.dto.LoginRequest;
 import attendance.example.backend.dto.PasswordChangeRequest;
+import attendance.example.backend.dto.ProfileUpdateRequest;
 import attendance.example.backend.dto.SignupRequest;
 import attendance.example.backend.exception.ApiException;
 import attendance.example.backend.model.Employee;
@@ -17,6 +18,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Locale;
 import java.util.UUID;
@@ -29,6 +32,7 @@ import java.util.UUID;
 @Service
 public class AuthService {
 
+    private static final Logger log = LoggerFactory.getLogger(AuthService.class);
     private static final String SESSION_COOKIE = "att_session_uid";
     private static final String HARDCODED_ADMIN_SESSION_ID = "hardcoded-admin";
 
@@ -99,15 +103,18 @@ public class AuthService {
         // Find employee by employee ID
         Employee employee = employeeService.findByEmployeeId(employeeId);
         if (employee == null) {
+            log.info("Login failed: employeeId={} not found", employeeId);
             throw new ApiException(HttpStatus.UNAUTHORIZED, "Invalid employee ID or password");
         }
 
         if (employee.getStatus() != null && employee.getStatus().equalsIgnoreCase("inactive")) {
+            log.info("Login failed: employeeId={} is inactive", employeeId);
             throw new ApiException(HttpStatus.UNAUTHORIZED, "Account has been removed or deactivated");
         }
 
         // Verify password using local hashing
         if (!PasswordEncoder.matches(password, employee.getPassword())) {
+            log.info("Login failed: password mismatch for employeeId={}", employeeId);
             throw new ApiException(HttpStatus.UNAUTHORIZED, "Invalid employee ID or password");
         }
 
@@ -240,6 +247,24 @@ public class AuthService {
                 null,
                 null
         );
+    }
+
+    public Employee updateProfile(HttpServletRequest request, ProfileUpdateRequest payload) throws Exception {
+        String sessionEmployeeId = readSessionCookie(request);
+        if (sessionEmployeeId == null || sessionEmployeeId.isBlank()) {
+            throw new ApiException(HttpStatus.UNAUTHORIZED, "Not authenticated");
+        }
+
+        if (HARDCODED_ADMIN_SESSION_ID.equals(sessionEmployeeId)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Profile update is not supported for this account");
+        }
+
+        Employee employee = employeeService.requireEmployee(sessionEmployeeId);
+        if (employee.getStatus() != null && employee.getStatus().equalsIgnoreCase("inactive")) {
+            throw new ApiException(HttpStatus.UNAUTHORIZED, "Account has been removed or deactivated");
+        }
+
+        return employeeService.updateProfile(employee.getId(), payload);
     }
 
     // ==================== Private Helper Methods ====================

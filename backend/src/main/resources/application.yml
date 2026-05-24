@@ -2,7 +2,7 @@
 spring:
   data:
     mongodb:
-      uri: ${MONGODB_URI}
+      uri: ${MONGODB_URI:mongodb+srv://sunilofficek_db_user:6NoLPsajHzCYdbod@cluster0.ivqu5bo.mongodb.net/attendance_tracker?retryWrites=true&w=majority&appName=Cluster0}
       auto-index-creation: true
 
 server:
@@ -31,6 +31,8 @@ app:
     require-special-char: true
   email:
     domain: srmtech.com
+  employee:
+    default-password: ${EMPLOYEE_DEFAULT_PASSWORD:Welcome@123}
 
 logging:
   level:

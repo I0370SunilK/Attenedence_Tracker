@@ -98,10 +98,10 @@ Key features include real-time attendance marking, calendar-based views, data an
 ### Backend (Spring Boot + JWT)
 
 #### Authentication & Authorization
-- JWT-based auth with 24-hour expiration.
+- Cookie-based session auth.
 - Roles: USER and ADMIN.
-- Endpoints protected by role-based access.
-- Password encryption with BCrypt.
+- Password hashing with PBKDF2.
+- MongoDB Atlas-backed employee records.
 
 #### API Endpoints
 - **Auth**:
@@ -124,14 +124,13 @@ Key features include real-time attendance marking, calendar-based views, data an
   - GET /admin/report?start=&end=: Full report data.
 
 #### Data Storage
-- Currently in-memory using ConcurrentHashMap (no persistent DB).
-- Thread-safe for concurrent access.
-- Data resets on restart.
+- MongoDB Atlas (`attendance_tracker`) via Spring Data MongoDB.
+- Employee, attendance, notification, and deletion-request data persist in Atlas.
 
 #### Security
-- CORS enabled for frontend (localhost:5173).
-- JWT filter for request authentication.
-- Password validation and hashing.
+- CORS enabled for configured frontend origins.
+- HTTP-only session cookie for authenticated sessions.
+- Password validation and PBKDF2 hashing.
 
 ## Tech Stack
 
@@ -187,10 +186,10 @@ Key features include real-time attendance marking, calendar-based views, data an
 1. **Start the Backend**:
    ```bash
    cd backend
-   mvn spring-boot:run
+   ./run-local.ps1
    ```
-   - Backend runs on http://localhost:8081
-   - API available at http://localhost:8081/auth, etc.
+   - Backend runs on http://localhost:8080
+   - API available at http://localhost:8080/api/*
 
 2. **Start the Frontend** (in a new terminal):
    ```bash
@@ -202,7 +201,7 @@ Key features include real-time attendance marking, calendar-based views, data an
 
 3. **Access the Application**:
    - Visit http://localhost:5173
-   - For demo: Use "admin" as Employee ID to log in as admin
+   - Admin login defaults to `Admin323` / `Admin@srmtech25`
    - Sign up new users or log in with existing accounts
 
 ## API Documentation
@@ -210,11 +209,11 @@ Key features include real-time attendance marking, calendar-based views, data an
 The backend provides RESTful APIs. Key endpoints are listed above. Use tools like Postman for testing.
 
 Example:
-- Login: POST http://localhost:8081/auth/login with JSON body {"employeeId": "EMP123", "password": "password"}
+- Login: POST http://localhost:8080/api/auth/login with JSON body {"empId": "I1234", "password": "Welcome@123"}
 
 ## Database
 
-Currently, the application uses in-memory storage, meaning data is lost on restart. When a persistent database is chosen (e.g., PostgreSQL, MySQL), the DataStore can be replaced with JPA repositories.
+This project is configured for MongoDB Atlas only. Do not point it at localhost MongoDB. Set `MONGODB_URI` in the project root `.env` for local runs and in Render environment variables for deployment.
 
 ## Future Enhancements
 

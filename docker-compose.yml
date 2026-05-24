@@ -22,6 +22,7 @@ services:
       - ADMIN_EMPLOYEE_ID=${ADMIN_EMPLOYEE_ID:-Admin323}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-Admin@srmtech25}
       - ADMIN_RECOVERY_EMAIL=${ADMIN_RECOVERY_EMAIL:-karivilla.sunil@srmtech.com}
+      - EMPLOYEE_DEFAULT_PASSWORD=${EMPLOYEE_DEFAULT_PASSWORD:-Welcome@123}
     restart: unless-stopped
     # Health check
     healthcheck:

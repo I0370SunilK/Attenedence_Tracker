@@ -32,6 +32,7 @@ export const PRIORITY: Record<AttendanceStatus, number> = {
 };
 
 export type Designation =
+  | "NA (please update)"
   | "Centre Head"
   | "Director"
   | "Associate Director"
@@ -46,10 +47,11 @@ export type Designation =
   | "Intern";
 
 export const DESIGNATIONS: Designation[] = [
-  "Centre Head", "Director", "Associate Director", "Senior Manager", "Manager", "Associate Manager", "Project Manager", "Associate Project Manager", "Associate", "Programmer Analyst", "Programmer Analyst Trainee", "Intern",
+  "NA (please update)", "Centre Head", "Director", "Associate Director", "Senior Manager", "Manager", "Associate Manager", "Project Manager", "Associate Project Manager", "Associate", "Programmer Analyst", "Programmer Analyst Trainee", "Intern",
 ];
 
 export const DESIGNATION_RANK: Record<Designation, number> = {
+  "NA (please update)": 0,
   "Centre Head": 6,
   Director: 5,
   "Associate Director": 4,

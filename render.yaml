@@ -41,5 +41,8 @@ services:
       - key: ADMIN_RECOVERY_EMAIL
         sync: false
 
+      - key: EMPLOYEE_DEFAULT_PASSWORD
+        sync: false
+
       - key: JAVA_OPTS
         value: "-Xmx256m -Xms128m"

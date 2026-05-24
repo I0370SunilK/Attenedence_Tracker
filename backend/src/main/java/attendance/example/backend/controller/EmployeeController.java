@@ -55,8 +55,12 @@ public class EmployeeController {
 
     @PostMapping(value = "/import-details", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Map<String, Object>> importEmployeeDetails(
-            @RequestParam("file") MultipartFile file
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "preview", defaultValue = "false") boolean preview
     ) throws Exception {
+        if (preview) {
+            return ResponseEntity.ok(employeeDetailsImportService.previewEmployeeDetailsFile(file));
+        }
         return ResponseEntity.ok(employeeDetailsImportService.importEmployeeDetailsFile(file));
     }
 

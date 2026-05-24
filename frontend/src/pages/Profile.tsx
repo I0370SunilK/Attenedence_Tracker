@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth";
-import { changePassword, sendDeletionRequest, getDeletionRequestStatus } from "@/lib/api";
+import { changePassword, sendDeletionRequest, getDeletionRequestStatus, updateProfile } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
@@ -14,15 +15,16 @@ import {
 import { LogOut, Trash2, Mail, MapPin, Briefcase, Users, IdCard, Camera, KeyRound, Pencil, Save, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Employee } from "@/lib/types";
+import { DESIGNATIONS, Employee } from "@/lib/types";
 
 export default function Profile() {
-  const { user, logout } = useAuth();
+  const { user, logout, setUser } = useAuth();
   const nav = useNavigate();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<Employee | null>(user);
   const [avatar, setAvatar] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [saving, setSaving] = useState(false);
 
   // password
   const [pwOpen, setPwOpen] = useState(false);
@@ -33,6 +35,7 @@ export default function Profile() {
 
   useEffect(() => {
     if (!user) return;
+    setDraft(user);
     getDeletionRequestStatus(user.employeeId)
       .then((request) => setDeleteRequestStatus(request.status as "pending" | "approved" | "rejected"))
       .catch(() => setDeleteRequestStatus("none"));
@@ -49,10 +52,27 @@ export default function Profile() {
     toast.success("Avatar updated");
   };
 
-  const save = () => {
-    Object.assign(user, draft);
-    setEditing(false);
-    toast.success("Profile updated");
+  const save = async () => {
+    if (!draft) return;
+
+    setSaving(true);
+    try {
+      const updated = await updateProfile({
+        designation: draft.designation,
+        team: draft.team,
+        email: draft.email,
+        city: draft.city,
+      });
+      setDraft(updated);
+      setUser(updated);
+      setEditing(false);
+      toast.success("Profile updated");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to update profile";
+      toast.error(message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const cancel = () => { setDraft(user); setEditing(false); };
@@ -179,8 +199,8 @@ export default function Profile() {
                 </>
               ) : (
                 <>
-                  <Button variant="ghost" onClick={cancel}><X className="h-4 w-4 mr-2" /> Cancel</Button>
-                  <Button onClick={save}><Save className="h-4 w-4 mr-2" /> Save changes</Button>
+                  <Button variant="ghost" onClick={cancel} disabled={saving}><X className="h-4 w-4 mr-2" /> Cancel</Button>
+                  <Button onClick={save} disabled={saving}><Save className="h-4 w-4 mr-2" /> {saving ? "Saving..." : "Save changes"}</Button>
                 </>
               )}
             </div>
@@ -190,7 +210,8 @@ export default function Profile() {
 
       <div className="grid sm:grid-cols-2 gap-4">
         <Detail icon={IdCard} label="Employee ID" value={draft.employeeId} editing={false} onChange={() => {}} />
-        <Detail icon={Briefcase} label="Designation" value={draft.designation} editing={false} onChange={() => {}} />
+        <Detail icon={Briefcase} label="Designation" value={draft.designation}
+          editing={editing} onChange={v => setDraft({ ...draft, designation: v as Employee["designation"] })} selectOptions={DESIGNATIONS} />
         <Detail icon={Users} label="Team" value={draft.team}
           editing={editing} onChange={v => setDraft({ ...draft, team: v })} />
         <Detail icon={Mail} label="Email" value={draft.email}
@@ -212,8 +233,8 @@ function Field({ label, value, onChange, type = "text" }: { label: string; value
 }
 
 function Detail({
-  icon: Icon, label, value, editing, onChange,
-}: { icon: any; label: string; value: string; editing: boolean; onChange: (v: string) => void }) {
+  icon: Icon, label, value, editing, onChange, selectOptions,
+}: { icon: any; label: string; value: string; editing: boolean; onChange: (v: string) => void; selectOptions?: string[] }) {
   return (
     <div className="card-soft p-5 flex items-center gap-4">
       <div className="h-10 w-10 rounded-xl bg-primary-soft text-primary grid place-items-center shrink-0">
@@ -222,7 +243,22 @@ function Detail({
       <div className="min-w-0 flex-1">
         <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">{label}</p>
         {editing ? (
-          <Input value={value} onChange={e => onChange(e.target.value)} className="h-8 mt-1 text-sm" />
+          selectOptions ? (
+            <Select value={value} onValueChange={onChange}>
+              <SelectTrigger className="h-8 mt-1 text-sm">
+                <SelectValue placeholder={`Select ${label.toLowerCase()}`} />
+              </SelectTrigger>
+              <SelectContent>
+                {selectOptions.map((option) => (
+                  <SelectItem key={option} value={option}>
+                    {option}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <Input value={value} onChange={e => onChange(e.target.value)} className="h-8 mt-1 text-sm" />
+          )
         ) : (
           <p className="font-medium truncate">{value}</p>
         )}

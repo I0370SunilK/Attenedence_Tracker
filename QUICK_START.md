@@ -1,1 +1,57 @@
-# SRM Attendance Tracker - Quick Start Guide\n\n## For Developers\n\n### Local Development\n\n**Option 1: Docker Compose (Recommended)**\n```bash\n# Build and run\ndocker-compose up --build\n\n# Access\nhttp://localhost:8080\n```\n\n**Option 2: Manual Setup**\n\nBackend:\n```bash\ncd backend\nmvn spring-boot:run\n```\n\nFrontend (new terminal):\n```bash\ncd frontend\nnpm install\nnpm run dev\n```\n\nAccess: http://localhost:5173\n\n### Configuration\n\nCreate `frontend/.env`:\n```\nVITE_API_BASE_URL=http://localhost:9090\n```\n\n### Build for Production\n\n```bash\n# Build Docker image\ndocker build -t srm-attendance-tracker .\n\n# Run\ndocker run -p 8080:8080 -e FIREBASE_SERVICE_ACCOUNT_JSON='<json>' srm-attendance-tracker\n```\n\n---\n\n## For DevOps/Deployment\n\n### Deploy to Render\n\n1. **Push to GitHub**\n   ```bash\n   git push origin main\n   ```\n\n2. **Create Render Service**\n   - Go to https://dashboard.render.com\n   - Click \"New +\" → \"Blueprint\"\n   - Select repo\n   - `render.yaml` auto-detected\n   - Click \"Create\"\n\n3. **Set Environment Variables**\n   - `FIREBASE_SERVICE_ACCOUNT_JSON`: Your Firebase service account JSON (as single line)\n   - `FIREBASE_WEB_API_KEY`: Your Firebase Web API key\n   - Other optional vars in `render.yaml`\n\n4. **Deploy**\n   - Click \"Deploy\"\n   - Wait 5-10 minutes\n   - Visit your Render domain\n\n### Verify Deployment\n\n```bash\n# Check health\ncurl https://<your-domain>/health\n\n# Test API\ncurl https://<your-domain>/api/auth/me\n```\n\n### View Logs\n\n```bash\n# Install Render CLI\nnpm install -g @render-cli/cli\n\n# Login\nrender login\n\n# View logs\nrender logs srm-attendance-tracker\n```\n\n---\n\n## Architecture Overview\n\n```\n┌─────────────────────────────────────────┐\n│        Render (or any Docker host)      │\n├─────────────────────────────────────────┤\n│                                          │\n│  ┌──────────────────────────────────┐  │\n│  │  Nginx (Port 8080)               │  │\n│  │  - Serves frontend (React SPA)   │  │\n│  │  - Proxies /api/* → Spring Boot  │  │\n│  │  - Gzip compression              │  │\n│  │  - Security headers              │  │\n│  └──────────────────────────────────┘  │\n│             ↓                           │\n│  ┌──────────────────────────────────┐  │\n│  │  Spring Boot (Port 8081)         │  │\n│  │  - REST API                      │  │\n│  │  - Firebase Auth                 │  │\n│  │  - Business Logic                │  │\n│  └──────────────────────────────────┘  │\n│             ↓                           │\n│  ┌──────────────────────────────────┐  │\n│  │  Firebase                        │  │\n│  │  - Authentication                │  │\n│  │  - User Management               │  │\n│  └──────────────────────────────────┘  │\n│                                          │\n└─────────────────────────────────────────┘\n```\n\n---\n\n## Environment Variables\n\n### Required for Production\n- `FIREBASE_SERVICE_ACCOUNT_JSON` - Firebase service account\n- `FIREBASE_WEB_API_KEY` - Firebase Web API key\n\n### Optional\n- `PORT` - Server port (default: 8080)\n- `SPRING_PROFILES_ACTIVE` - Profile (dev/prod, default: prod)\n- `ADMIN_EMPLOYEE_ID` - Admin ID (default: Admin323)\n- `ADMIN_PASSWORD` - Admin password\n- `ADMIN_RECOVERY_EMAIL` - Recovery email\n- `JAVA_OPTS` - JVM options (e.g., `-Xmx512m -Xms256m`)\n\n---\n\n## Troubleshooting\n\n### Port Already in Use\n```bash\n# Find process using port\nlsof -i :8080\n\n# Kill it\nkill -9 <PID>\n```\n\n### Docker Build Fails\n```bash\n# Clean build\ndocker-compose down --volumes\ndocker-compose build --no-cache\n```\n\n### API Returns 404\n- Check `nginx.conf` has `/api/` location block\n- Verify backend is running on port 8081\n- Check logs: `docker-compose logs app`\n\n### Firebase Auth Errors\n- Verify `serviceAccountKey.json` is valid\n- Check Firebase credentials in environment variables\n- Verify Firebase project settings\n\n---\n\n## Performance Tips\n\n1. **Frontend**\n   - Enable production build: `npm run build`\n   - Use CDN for static assets\n   - Enable gzip compression (done by Nginx)\n\n2. **Backend**\n   - Use connection pooling\n   - Cache frequently accessed data\n   - Optimize database queries\n\n3. **Docker**\n   - Use Alpine images (smaller, faster)\n   - Multi-stage builds (smaller final image)\n   - Layer caching for faster rebuilds\n\n---\n\n## Security\n\n✅ HTTPS (Render provides SSL certificate)\n✅ Security headers in Nginx config\n✅ Firebase authentication\n✅ No credentials in code (use environment variables)\n✅ CORS properly configured\n\n---\n\n## Documentation\n\n- [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) - Complete setup guide\n- [DEPLOYMENT_CHECKLIST.md](DEPLOYMENT_CHECKLIST.md) - Pre-deployment verification\n- [render.yaml](render.yaml) - Render deployment configuration\n\n---\n\n**Need Help?** Check the documentation files or review container logs.\n
+# SRM Attendance Tracker Quick Start
+
+## Atlas Only
+
+This project uses MongoDB Atlas only.
+
+- Do not use local MongoDB.
+- Set `MONGODB_URI` to the Atlas cluster URI for `attendance_tracker`.
+- The sample format is in `.env.example`.
+
+## Localhost
+
+1. Copy `.env.example` to `.env` in the project root.
+2. Update `MONGODB_URI` with the real Atlas password.
+3. Start the backend:
+
+```powershell
+cd backend
+.\run-local.ps1
+```
+
+4. Start the frontend in a second terminal:
+
+```powershell
+cd frontend
+npm install
+npm run dev
+```
+
+5. Open `http://localhost:5173`.
+
+Notes:
+
+- The backend runs on `http://localhost:8080`.
+- Vite proxies `/api/*` to that backend automatically.
+- Admin login defaults to `Admin323` / `Admin@srmtech25` unless overridden in env.
+- Imported employees without a stored password are automatically provisioned with `EMPLOYEE_DEFAULT_PASSWORD` or `Welcome@123`.
+
+## Render
+
+Set these environment variables in Render:
+
+- `MONGODB_URI`
+- `ADMIN_EMPLOYEE_ID`
+- `ADMIN_PASSWORD`
+- `ADMIN_RECOVERY_EMAIL`
+- `EMPLOYEE_DEFAULT_PASSWORD`
+- `APP_CORS_ALLOWED_ORIGINS=https://attenedence-tracker.onrender.com`
+- `SESSION_COOKIE_SECURE=true`
+
+Deploy using the repo `render.yaml`.
+
+## Common Checks
+
+- `GET /health` should return `status: UP`
+- `GET /backend` should return `Backend Running Successfully`
+- If employee login fails, verify the exact `employeeId` in Atlas and try the default imported password if that user was created by import

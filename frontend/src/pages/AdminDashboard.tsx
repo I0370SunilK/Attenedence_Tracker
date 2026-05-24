@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { AttendanceRecord, AttendanceStatus, Employee, STATUS_COLOR } from "@/lib/types";
 import { countByStatus } from "@/lib/attendance";
-import { getAttendanceForEmployees, getEmployees, importEmployeeDetails } from "@/lib/api";
+import { getAttendanceForEmployees, getEmployees, importEmployeeDetails, previewEmployeeDetails, type EmployeeDetailsImportResult } from "@/lib/api";
 import { ATTENDANCE_CHANGED_EVENT } from "@/lib/attendanceEvents";
 import StatCard from "@/components/StatCard";
 import { Users, CheckCircle2, AlertCircle, Trophy, FileText, BarChart3, CalendarX2, Loader2, Upload, UserPlus } from "lucide-react";
@@ -34,7 +34,9 @@ export default function AdminDashboard() {
   const [importResult, setImportResult] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [selectedEmployeeDetailsFile, setSelectedEmployeeDetailsFile] = useState<File | null>(null);
   const [employeeDetailsImporting, setEmployeeDetailsImporting] = useState(false);
+  const [employeeDetailsPreviewing, setEmployeeDetailsPreviewing] = useState(false);
   const [employeeDetailsImportResult, setEmployeeDetailsImportResult] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [employeeDetailsPreview, setEmployeeDetailsPreview] = useState<EmployeeDetailsImportResult | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedMonth, setSelectedMonth] = useState<number>(today.getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState<number>(today.getFullYear());
@@ -228,8 +230,41 @@ export default function AdminDashboard() {
       const file = e.target.files?.[0];
       if (file) {
         setSelectedEmployeeDetailsFile(file);
+        setEmployeeDetailsPreview(null);
+        setEmployeeDetailsImportResult(null);
       }
     };
+
+   const handlePreviewEmployeeDetails = async () => {
+     if (!selectedEmployeeDetailsFile) {
+       setEmployeeDetailsImportResult({ message: "Select a file before previewing", type: "error" });
+       return;
+     }
+
+     setEmployeeDetailsPreviewing(true);
+     setEmployeeDetailsImportResult(null);
+
+     try {
+       const result = await previewEmployeeDetails(selectedEmployeeDetailsFile);
+       const total = result.totalRows ?? 0;
+       const valid = result.validRows ?? 0;
+       const errorCount = result.errors?.length || 0;
+
+       setEmployeeDetailsPreview(result);
+       setEmployeeDetailsImportResult({
+         message: `Preview ready. Total rows ${total} | Ready to import ${valid}${errorCount ? ` | Errors ${errorCount}` : ""}`,
+         type: errorCount ? "error" : "success",
+       });
+     } catch (error: any) {
+       setEmployeeDetailsPreview(null);
+       setEmployeeDetailsImportResult({
+         message: error.message || "Failed to preview employee details",
+         type: "error",
+       });
+     } finally {
+       setEmployeeDetailsPreviewing(false);
+     }
+   };
 
    const handleImportExcel = async () => {
      setImporting(true);
@@ -281,7 +316,7 @@ export default function AdminDashboard() {
 
    const handleImportEmployeeDetails = async () => {
      if (!selectedEmployeeDetailsFile) {
-       setEmployeeDetailsImportResult({ message: "Select a CSV file before importing", type: "error" });
+       setEmployeeDetailsImportResult({ message: "Select a file before importing", type: "error" });
        return;
      }
 
@@ -294,11 +329,15 @@ export default function AdminDashboard() {
        const updated = result.updatedEmployees?.length || 0;
        const skipped = result.skippedEmployees?.length || 0;
        const errorCount = result.errors?.length || 0;
+       const total = result.totalRows ?? 0;
+       const valid = result.validRows ?? 0;
 
        const summary = [
+         total ? `Total ${total}` : "",
+         valid ? `Parsed ${valid}` : "",
          created ? `Created ${created}` : "",
          updated ? `Updated ${updated}` : "",
-         skipped ? `Unchanged ${skipped}` : "",
+         skipped ? `Skipped ${skipped}` : "",
          errorCount ? `Errors ${errorCount}` : "",
        ].filter(Boolean).join(" | ");
 
@@ -313,6 +352,7 @@ export default function AdminDashboard() {
 
        if (!errorCount) {
          setSelectedEmployeeDetailsFile(null);
+         setEmployeeDetailsPreview(null);
          setEmployeeDetailsImportOpen(false);
        }
      } catch (error: any) {
@@ -697,8 +737,9 @@ export default function AdminDashboard() {
            <DialogHeader>
              <DialogTitle>Import Employee Details</DialogTitle>
              <DialogDescription>
-               Upload a CSV file with columns in this exact order: email, fullName, role, employeeId.
-               This import is separate from attendance import and is meant to keep employee mapping clean and exact.
+               Upload an Excel or CSV file exported from your employee sheet in this order:
+               employeeId, FullName, Team, email.
+               Legacy CSV order email, fullName, role, employeeId is also supported.
              </DialogDescription>
            </DialogHeader>
            <div className="space-y-4">
@@ -706,24 +747,24 @@ export default function AdminDashboard() {
                Example:
                <br />
                <span className="font-mono">
-                 email,fullName,role,employeeId
+                 employeeId,FullName,Team,email
                </span>
                <br />
                <span className="font-mono">
-                 madhuri.rapolu@srmtech.com,Madhuri Rapolu,Employee,A3771
+                 A3657,Naveen Kumar Paripalli,Center Head HYD,naveen.paripalli@srmtech.com
                </span>
              </div>
              <div className="space-y-2">
-               <span className="font-medium">Upload Employee Details CSV</span>
+               <span className="font-medium">Upload Employee Details File</span>
                <div className="flex flex-col gap-2">
                  <label htmlFor="employee-details-csv-input" className="flex items-center gap-2 cursor-pointer rounded-md border border-dashed bg-background px-4 py-3 text-sm text-muted-foreground hover:border-primary hover:text-primary">
                    <UserPlus className="h-4 w-4 mr-2" />
-                   <span>Click to choose CSV file</span>
+                   <span>Click to choose Excel or CSV file</span>
                  </label>
                  <input
                    id="employee-details-csv-input"
                    type="file"
-                   accept=".csv"
+                   accept=".csv,text/csv,.xlsx,.xls,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                    className="hidden"
                    onChange={handleEmployeeDetailsFileChange}
                  />
@@ -734,6 +775,42 @@ export default function AdminDashboard() {
                  )}
                </div>
              </div>
+             {employeeDetailsPreview && (
+               <div className="rounded-lg border border-border bg-muted/20 p-4 space-y-3">
+                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+                   <div><span className="text-muted-foreground">File type:</span> <span className="font-medium uppercase">{employeeDetailsPreview.fileType ?? "-"}</span></div>
+                   <div><span className="text-muted-foreground">Total rows:</span> <span className="font-medium">{employeeDetailsPreview.totalRows ?? 0}</span></div>
+                   <div><span className="text-muted-foreground">Ready rows:</span> <span className="font-medium">{employeeDetailsPreview.validRows ?? 0}</span></div>
+                   <div><span className="text-muted-foreground">Errors:</span> <span className="font-medium">{employeeDetailsPreview.errors?.length || 0}</span></div>
+                 </div>
+                 {(employeeDetailsPreview.previewRows?.length || 0) > 0 && (
+                   <div className="overflow-auto rounded border border-border">
+                     <table className="w-full text-sm">
+                       <thead className="bg-muted/40">
+                         <tr className="text-left">
+                           <th className="px-3 py-2 font-medium">Row</th>
+                           <th className="px-3 py-2 font-medium">Employee ID</th>
+                           <th className="px-3 py-2 font-medium">Full Name</th>
+                           <th className="px-3 py-2 font-medium">Team</th>
+                           <th className="px-3 py-2 font-medium">Email</th>
+                         </tr>
+                       </thead>
+                       <tbody>
+                         {employeeDetailsPreview.previewRows?.map((row) => (
+                           <tr key={`${row.rowNumber}-${row.employeeId}`} className="border-t border-border">
+                             <td className="px-3 py-2">{row.rowNumber}</td>
+                             <td className="px-3 py-2">{row.employeeId}</td>
+                             <td className="px-3 py-2">{row.fullName}</td>
+                             <td className="px-3 py-2">{row.team}</td>
+                             <td className="px-3 py-2">{row.email}</td>
+                           </tr>
+                         ))}
+                       </tbody>
+                     </table>
+                   </div>
+                 )}
+               </div>
+             )}
              {employeeDetailsImportResult && (
                <div className={`p-4 rounded-lg ${employeeDetailsImportResult.type === 'success' ? 'bg-success/10 border border-success/20' : 'bg-destructive/10 border border-destructive/20'}`}>
                  <span className={`font-medium ${employeeDetailsImportResult.type === 'success' ? 'text-success' : 'text-destructive'}`}>
@@ -741,13 +818,28 @@ export default function AdminDashboard() {
                  </span>
                </div>
              )}
-             <Button
-               onClick={handleImportEmployeeDetails}
-               disabled={employeeDetailsImporting || !selectedEmployeeDetailsFile}
-               className="w-full"
-             >
-               {employeeDetailsImporting ? "Importing employee details..." : "Import Employee Details CSV"}
-             </Button>
+             {(employeeDetailsPreview?.errors?.length || 0) > 0 && (
+               <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">
+                 {employeeDetailsPreview?.errors?.slice(0, 5).join(" | ")}
+               </div>
+             )}
+             <div className="flex gap-3">
+               <Button
+                 variant="outline"
+                 onClick={handlePreviewEmployeeDetails}
+                 disabled={employeeDetailsPreviewing || employeeDetailsImporting || !selectedEmployeeDetailsFile}
+                 className="flex-1"
+               >
+                 {employeeDetailsPreviewing ? "Previewing..." : "Preview File"}
+               </Button>
+               <Button
+                 onClick={handleImportEmployeeDetails}
+                 disabled={employeeDetailsImporting || employeeDetailsPreviewing || !selectedEmployeeDetailsFile}
+                 className="flex-1"
+               >
+                 {employeeDetailsImporting ? "Importing employee details..." : "Import Employee Details"}
+               </Button>
+             </div>
            </div>
          </DialogContent>
        </Dialog>

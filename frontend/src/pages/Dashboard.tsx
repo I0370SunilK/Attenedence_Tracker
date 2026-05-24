@@ -85,19 +85,21 @@ export default function Dashboard() {
         <div className="absolute -top-20 -right-20 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
         <div className="absolute -bottom-24 left-1/2 h-64 w-64 rounded-full bg-white/5 blur-3xl" />
         <div className="relative flex flex-col md:flex-row md:items-end md:justify-between gap-6">
-          <div>
+          <div className="min-w-0 flex-1">
             <p className="text-sm text-primary-foreground/80 font-medium">{greeting(now)}</p>
-            <h1 className="text-3xl sm:text-4xl font-bold mt-1">Hi, {user?.fullName.split(" ")[0]} 👋</h1>
+            <h1 className="mt-1 max-w-full text-[clamp(1.65rem,3.4vw,2.85rem)] font-bold leading-tight text-balance break-words">
+              Hi, {user?.fullName} 👋
+            </h1>
             <p className="text-primary-foreground/85 text-sm mt-2">
               {format(now, "EEEE · d MMMM yyyy")}
             </p>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="bg-white/10 backdrop-blur px-5 py-3 rounded-xl border border-white/15">
+          <div className="flex items-center gap-4 shrink-0 self-start md:self-auto">
+            <div className="bg-white/10 backdrop-blur px-4 sm:px-5 py-3 rounded-xl border border-white/15">
               <div className="flex items-center gap-2 text-xs text-primary-foreground/80 mb-0.5">
                 <Clock className="h-3.5 w-3.5" /> Current time
               </div>
-              <div className="text-2xl font-bold tabular-nums">{format(now, "hh:mm:ss a")}</div>
+              <div className="text-xl sm:text-2xl font-bold tabular-nums whitespace-nowrap">{format(now, "hh:mm:ss a")}</div>
             </div>
           </div>
         </div>

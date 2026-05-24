@@ -5,6 +5,7 @@ import attendance.example.backend.dto.CheckEmailRequest;
 import attendance.example.backend.dto.ForgotPasswordResetRequest;
 import attendance.example.backend.dto.LoginRequest;
 import attendance.example.backend.dto.PasswordChangeRequest;
+import attendance.example.backend.dto.ProfileUpdateRequest;
 import attendance.example.backend.dto.SignupRequest;
 import attendance.example.backend.model.Employee;
 import attendance.example.backend.service.AuthService;
@@ -41,6 +42,14 @@ public class AuthController {
     @GetMapping("/me")
     public ResponseEntity<Employee> me(HttpServletRequest request) throws Exception {
         return ResponseEntity.ok(authService.getCurrentUser(request));
+    }
+
+    @PutMapping("/me")
+    public ResponseEntity<Employee> updateProfile(
+            @RequestBody ProfileUpdateRequest request,
+            HttpServletRequest httpRequest
+    ) throws Exception {
+        return ResponseEntity.ok(authService.updateProfile(httpRequest, request));
     }
 
     @PutMapping("/password")

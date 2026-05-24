@@ -64,6 +64,14 @@ export async function changePassword(currentPassword: string, newPassword: strin
   });
 }
 
+export async function updateProfile(payload: Pick<Employee, "designation" | "team" | "email" | "city">): Promise<Employee> {
+  return request<Employee>(`/api/auth/me`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function checkEmailExists(email: string): Promise<boolean> {
   const result = await request<{ exists: boolean }>(`/api/auth/check-email`, {
     method: "POST",
@@ -86,9 +94,20 @@ export async function getEmployees(): Promise<Employee[]> {
 }
 
 export interface EmployeeDetailsImportResult {
+  mode?: "preview" | "import";
+  fileType?: string;
+  totalRows?: number;
+  validRows?: number;
   createdEmployees: string[];
   updatedEmployees: string[];
   skippedEmployees: string[];
+  previewRows?: Array<{
+    rowNumber: string;
+    employeeId: string;
+    fullName: string;
+    team: string;
+    email: string;
+  }>;
   errors: string[];
   success: boolean;
 }
@@ -96,6 +115,16 @@ export interface EmployeeDetailsImportResult {
 export async function importEmployeeDetails(file: File): Promise<EmployeeDetailsImportResult> {
   const formData = new FormData();
   formData.append("file", file);
+  return request<EmployeeDetailsImportResult>("/api/employees/import-details", {
+    method: "POST",
+    body: formData,
+  });
+}
+
+export async function previewEmployeeDetails(file: File): Promise<EmployeeDetailsImportResult> {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("preview", "true");
   return request<EmployeeDetailsImportResult>("/api/employees/import-details", {
     method: "POST",
     body: formData,

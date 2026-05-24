@@ -1,13 +1,16 @@
 package attendance.example.backend.service;
 
 import attendance.example.backend.dto.SignupRequest;
+import attendance.example.backend.dto.ProfileUpdateRequest;
 import attendance.example.backend.exception.ApiException;
 import attendance.example.backend.model.DeletionRequest;
 import attendance.example.backend.model.Employee;
 import attendance.example.backend.repository.DeletionRequestRepository;
 import attendance.example.backend.repository.EmployeeRepository;
+import attendance.example.backend.util.PasswordEncoder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -24,19 +27,23 @@ import java.util.UUID;
 public class EmployeeService {
 
     private static final Logger log = LoggerFactory.getLogger(EmployeeService.class);
+    private static final String IMPORT_DEFAULT_DESIGNATION = "NA (please update)";
 
     private final EmployeeRepository employeeRepository;
     private final DeletionRequestRepository deletionRequestRepository;
     private final NotificationService notificationService;
+    private final String defaultEmployeePassword;
 
     public EmployeeService(
             EmployeeRepository employeeRepository,
             DeletionRequestRepository deletionRequestRepository,
-            @Lazy NotificationService notificationService
+            @Lazy NotificationService notificationService,
+            @Value("${app.employee.default-password:Welcome@123}") String defaultEmployeePassword
     ) {
         this.employeeRepository = employeeRepository;
         this.deletionRequestRepository = deletionRequestRepository;
         this.notificationService = notificationService;
+        this.defaultEmployeePassword = defaultEmployeePassword;
     }
 
     public List<Employee> getEmployees() throws Exception {
@@ -64,11 +71,11 @@ public class EmployeeService {
         Employee employee = new Employee();
         employee.setId(uid);
         employee.setEmployeeId(resolveEmployeeId(request));
-        employee.setFullName(requireText(request.getFullName(), "Full name is required"));
-        employee.setDesignation(defaultIfBlank(request.getDesignation(), "Programmer Analyst"));
-        employee.setTeam(defaultIfBlank(request.getTeam(), "Platform"));
+        employee.setFullName(normalizeHumanText(requireText(request.getFullName(), "Full name is required")));
+        employee.setDesignation(normalizeHumanText(defaultIfBlank(request.getDesignation(), "Programmer Analyst")));
+        employee.setTeam(normalizeHumanText(defaultIfBlank(request.getTeam(), "Platform")));
         employee.setEmail(normalizeEmail(request.getEmail()));
-        employee.setCity(defaultIfBlank(request.getCity(), "Bengaluru"));
+        employee.setCity(normalizeHumanText(defaultIfBlank(request.getCity(), "Bengaluru")));
         employee.setPassword(hashedPassword);
         
         // Validate and set state
@@ -77,7 +84,7 @@ public class EmployeeService {
             if (!isValidIndianState(state)) {
                 throw new ApiException(HttpStatus.BAD_REQUEST, "Please select a valid Indian state");
             }
-            employee.setState(state.trim());
+            employee.setState(normalizeHumanText(state));
         } else {
             employee.setState("Karnataka");
         }
@@ -108,6 +115,33 @@ public class EmployeeService {
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Employee not found"));
         employee.setPassword(hashedPassword);
         employeeRepository.save(employee);
+    }
+
+    public Employee updateProfile(String employeeId, ProfileUpdateRequest request) throws Exception {
+        if (request == null) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Profile update payload is required");
+        }
+
+        Employee employee = findById(employeeId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Employee not found"));
+
+        String designation = normalizeHumanText(requireText(request.getDesignation(), "Designation is required"));
+        String team = normalizeHumanText(requireText(request.getTeam(), "Team is required"));
+        String email = normalizeEmail(request.getEmail());
+        String city = normalizeHumanText(requireText(request.getCity(), "City is required"));
+
+        Optional<Employee> existingByEmail = employeeRepository.findByEmail(email);
+        if (existingByEmail.isPresent() && !existingByEmail.get().getId().equals(employee.getId())) {
+            throw new ApiException(HttpStatus.CONFLICT, "Email already exists");
+        }
+
+        employee.setDesignation(designation);
+        employee.setTeam(team);
+        employee.setEmail(email);
+        employee.setCity(city);
+
+        Employee saved = employeeRepository.save(employee);
+        return sanitize(saved);
     }
 
     /**
@@ -254,13 +288,23 @@ public class EmployeeService {
             String roleText,
             String employeeId
     ) throws Exception {
+        return upsertImportedEmployee(email, fullName, roleText, employeeId, null);
+    }
+
+    public ImportEmployeeResult upsertImportedEmployee(
+            String email,
+            String fullName,
+            String roleText,
+            String employeeId,
+            String team
+    ) throws Exception {
         String normalizedEmployeeId = normalizeEmployeeId(employeeId);
         if (!normalizedEmployeeId.matches("^[IA]\\d{4}$")) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Employee ID must be in format I1234 or A1234");
         }
 
         String normalizedEmail = normalizeEmail(email);
-        String cleanFullName = requireText(fullName, "Full name is required");
+        String cleanFullName = normalizeHumanText(requireText(fullName, "Full name is required"));
         String resolvedRole = resolveImportedRole(roleText, normalizedEmployeeId);
 
         Employee byEmployeeId = findByEmployeeId(normalizedEmployeeId);
@@ -271,18 +315,20 @@ public class EmployeeService {
         }
 
         Employee employee = byEmployeeId != null ? byEmployeeId : byEmail;
+        if (employee != null) {
+            return new ImportEmployeeResult(sanitize(employee), false, false);
+        }
         boolean created = employee == null;
 
-        if (employee == null) {
-            employee = new Employee();
-            employee.setId(UUID.randomUUID().toString());
-            employee.setDesignation("Associate");
-            employee.setTeam("General");
-            employee.setCity("Hyderabad");
-            employee.setState("Telangana");
-            employee.setCountry("India");
-            employee.setAvatarColor(avatarColorFor(normalizedEmployeeId));
-        }
+        employee = new Employee();
+        employee.setId(UUID.randomUUID().toString());
+        employee.setDesignation(IMPORT_DEFAULT_DESIGNATION);
+        employee.setTeam(normalizeHumanText(defaultIfBlank(team, "General")));
+        employee.setCity("Hyderabad");
+        employee.setState("Telangana");
+        employee.setCountry("India");
+        employee.setAvatarColor(avatarColorFor(normalizedEmployeeId));
+        employee.setPassword(PasswordEncoder.encode(defaultEmployeePassword));
 
         boolean updated = false;
         updated |= assignIfChanged(employee::getEmployeeId, employee::setEmployeeId, normalizedEmployeeId);
@@ -290,9 +336,12 @@ public class EmployeeService {
         updated |= assignIfChanged(employee::getFullName, employee::setFullName, cleanFullName);
         updated |= assignIfChanged(employee::getRole, employee::setRole, resolvedRole);
         updated |= assignIfChanged(employee::getStatus, employee::setStatus, "active");
+        if (team != null && !team.isBlank()) {
+            updated |= assignIfChanged(employee::getTeam, employee::setTeam, normalizeHumanText(team));
+        }
 
         if (employee.getDesignation() == null || employee.getDesignation().isBlank()) {
-            employee.setDesignation("admin".equals(resolvedRole) ? "Manager" : "Associate");
+            employee.setDesignation(IMPORT_DEFAULT_DESIGNATION);
             updated = true;
         }
         if (employee.getTeam() == null || employee.getTeam().isBlank()) {
@@ -315,12 +364,32 @@ public class EmployeeService {
             employee.setAvatarColor(avatarColorFor(normalizedEmployeeId));
             updated = true;
         }
+        if (employee.getPassword() == null || employee.getPassword().isBlank()) {
+            employee.setPassword(PasswordEncoder.encode(defaultEmployeePassword));
+            updated = true;
+        }
 
         if (created || updated) {
             employeeRepository.save(employee);
         }
 
         return new ImportEmployeeResult(sanitize(employee), created, !created && updated);
+    }
+
+    public int provisionMissingPasswords() {
+        List<Employee> employees = employeeRepository.findAll();
+        int updatedCount = 0;
+
+        for (Employee employee : employees) {
+            if (employee.getPassword() == null || employee.getPassword().isBlank()) {
+                employee.setPassword(PasswordEncoder.encode(defaultEmployeePassword));
+                employeeRepository.save(employee);
+                updatedCount++;
+                log.info("Provisioned default password for employeeId={}", employee.getEmployeeId());
+            }
+        }
+
+        return updatedCount;
     }
 
     public record ImportEmployeeResult(Employee employee, boolean created, boolean updated) {
@@ -370,6 +439,21 @@ public class EmployeeService {
         }
         if (employee.getStatus() == null || employee.getStatus().isBlank()) {
             employee.setStatus("active");
+        }
+        if (employee.getFullName() != null) {
+            employee.setFullName(normalizeHumanText(employee.getFullName()));
+        }
+        if (employee.getDesignation() != null) {
+            employee.setDesignation(normalizeHumanText(employee.getDesignation()));
+        }
+        if (employee.getTeam() != null) {
+            employee.setTeam(normalizeHumanText(employee.getTeam()));
+        }
+        if (employee.getCity() != null) {
+            employee.setCity(normalizeHumanText(employee.getCity()));
+        }
+        if (employee.getState() != null) {
+            employee.setState(normalizeHumanText(employee.getState()));
         }
         return employee;
     }
@@ -428,6 +512,22 @@ public class EmployeeService {
         };
         int index = Math.abs(employeeId.hashCode()) % palette.length;
         return palette[index];
+    }
+
+    private String normalizeHumanText(String value) {
+        if (value == null) {
+            return null;
+        }
+
+        String normalized = value
+                .replace('\uFEFF', ' ')
+                .replace('\u00A0', ' ')
+                .replace('\u2007', ' ')
+                .replace('\u202F', ' ')
+                .replace('\uFFFD', ' ');
+        normalized = normalized.replaceAll("[\\p{Cntrl}&&[^\r\n\t]]", " ");
+        normalized = normalized.replaceAll("\\s+", " ").trim();
+        return normalized;
     }
 
 }

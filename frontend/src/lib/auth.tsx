@@ -10,6 +10,7 @@ interface AuthState {
   login: (payload: { role: Role; user: Employee }) => void;
   logout: () => void;
   setRole: (r: Role) => void;
+  setUser: (user: Employee | null) => void;
 }
 
 const AuthCtx = createContext<AuthState | null>(null);
@@ -88,8 +89,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (user) saveSession(newRole, user);
   };
 
+  const updateUser = (nextUser: Employee | null) => {
+    setUser(nextUser);
+    if (nextUser) {
+      saveSession(role, nextUser);
+    } else {
+      localStorage.removeItem(SESSION_KEY);
+    }
+  };
+
   return (
-    <AuthCtx.Provider value={{ user, role, isReady, login, logout, setRole }}>
+    <AuthCtx.Provider value={{ user, role, isReady, login, logout, setRole, setUser: updateUser }}>
       {children}
     </AuthCtx.Provider>
   );
