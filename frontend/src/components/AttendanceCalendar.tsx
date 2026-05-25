@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { format } from "date-fns";
 import { ChevronLeft, ChevronRight, Pencil, Clock } from "lucide-react";
 import { AttendanceRecord, AttendanceStatus, STATUS_BADGE, STATUS_COLOR, STATUS_LABEL } from "@/lib/types";
-import { dateKey, isEditable } from "@/lib/attendance";
+import { dateKey, isEditable, getEarliestEditableMonthStart } from "@/lib/attendance";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,8 @@ export default function AttendanceCalendar({
 }) {
   const today = new Date();
   const [cursor, setCursor] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
+  const currentMonthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+  const minMonthStart = getEarliestEditableMonthStart(today);
 
   const map = useMemo(() => new Map(records.map(r => [r.date, r])), [records]);
 
@@ -42,11 +44,13 @@ export default function AttendanceCalendar({
         </div>
         <div className="flex items-center gap-1">
           <Button variant="ghost" size="icon" className="h-8 w-8"
+            disabled={cursor.getTime() <= minMonthStart.getTime()}
             onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1))}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
           <span className="text-sm font-semibold w-32 text-center">{format(cursor, "MMMM yyyy")}</span>
           <Button variant="ghost" size="icon" className="h-8 w-8"
+            disabled={cursor.getTime() >= currentMonthStart.getTime()}
             onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1))}>
             <ChevronRight className="h-4 w-4" />
           </Button>

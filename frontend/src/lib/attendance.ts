@@ -100,9 +100,19 @@ export function attendanceStreak(records: AttendanceRecord[]) {
   return streak;
 }
 
+export function getEarliestEditableMonthStart(today = new Date()): Date {
+  const y = today.getFullYear();
+  const m = today.getMonth();
+  if (m === 0) {
+    return new Date(y - 1, 10, 1); // Nov 1 of previous year when current is January
+  }
+  return new Date(y, 0, 1); // Jan 1 of current year
+}
+
 export function isEditable(date: string) {
   const target = new Date(date); target.setHours(0,0,0,0);
   const today = new Date(); today.setHours(0,0,0,0);
-  const diff = (today.getTime() - target.getTime()) / 86400000;
-  return diff >= 0;
+  if (target > today) return false;
+  const min = getEarliestEditableMonthStart(today);
+  return target >= min;
 }
