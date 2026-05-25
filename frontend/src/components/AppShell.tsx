@@ -9,7 +9,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
         <TopNav />
       </div>
       <main className="w-full overflow-x-hidden">
-        <div className="max-w-[1400px] mx-auto px-4 lg:px-6 xl:px-8 py-8 pb-20 md:pb-8 min-w-0">
+        <div className="max-w-[1400px] mx-auto px-3 sm:px-4 lg:px-6 xl:px-8 py-4 sm:py-6 lg:py-8 pb-24 md:pb-8 min-w-0">
           {children}
         </div>
       </main>

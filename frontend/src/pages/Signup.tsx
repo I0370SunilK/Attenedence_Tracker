@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DESIGNATIONS } from "@/lib/types";
+import { DESIGNATIONS, type Employee } from "@/lib/types";
 import { useAuth } from "@/lib/auth";
 import { signupUser } from "@/lib/api";
 import { toast } from "sonner";
@@ -133,7 +133,7 @@ export default function Signup() {
       const auth = await signupUser({
         fullName: form.fullName,
         empId: form.empId,
-        designation: form.designation as any,
+        designation: form.designation as Employee["designation"],
         team: form.team,
         email: form.email.toLowerCase(),
         city: form.city,

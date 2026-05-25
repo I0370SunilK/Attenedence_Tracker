@@ -245,7 +245,7 @@ export default function StackedTrendChart({
   ));
 
   return (
-    <Card className="card-soft p-6">
+    <Card className="card-soft p-4 sm:p-6">
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
           <h3 className="font-bold">
@@ -259,7 +259,7 @@ export default function StackedTrendChart({
         </div>
       </div>
 
-      <div className="flex h-[23rem] flex-col">
+      <div className="flex h-[20rem] flex-col sm:h-[23rem]">
         {chartData.length === 0 ? (
           <div className="flex-1 grid place-items-center text-sm text-muted-foreground">
             No data

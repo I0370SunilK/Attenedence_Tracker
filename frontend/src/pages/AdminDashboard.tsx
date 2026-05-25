@@ -20,6 +20,10 @@ type RankRow = {
   counts: Record<AttendanceStatus, number>;
 };
 
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
 export default function AdminDashboard() {
   const today = new Date();
   const navigate = useNavigate();
@@ -257,10 +261,10 @@ export default function AdminDashboard() {
          message: `Preview ready. Total rows ${total} | Ready to import ${valid}${errorCount ? ` | Errors ${errorCount}` : ""}`,
          type: errorCount ? "error" : "success",
        });
-     } catch (error: any) {
+     } catch (error) {
        setEmployeeDetailsPreview(null);
        setEmployeeDetailsImportResult({
-         message: error.message || "Failed to preview employee details",
+         message: getErrorMessage(error, "Failed to preview employee details"),
          type: "error",
        });
      } finally {
@@ -306,9 +310,9 @@ export default function AdminDashboard() {
            type: 'error' 
          });
        }
-     } catch (error: any) {
+     } catch (error) {
        setImportResult({ 
-         message: error.message || 'An unexpected error occurred', 
+         message: getErrorMessage(error, "An unexpected error occurred"), 
          type: 'error' 
        });
      } finally {
@@ -357,9 +361,9 @@ export default function AdminDashboard() {
          setEmployeeDetailsPreview(null);
          setEmployeeDetailsImportOpen(false);
        }
-     } catch (error: any) {
+     } catch (error) {
        setEmployeeDetailsImportResult({
-         message: error.message || "Failed to import employee details",
+         message: getErrorMessage(error, "Failed to import employee details"),
          type: "error",
        });
      } finally {
@@ -376,7 +380,7 @@ export default function AdminDashboard() {
   }, [range]);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-5 sm:space-y-8">
         <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard")} className="-ml-2">
           <ArrowLeft className="h-4 w-4 mr-1" /> Back to Employee Dashboard
         </Button>
@@ -387,21 +391,21 @@ export default function AdminDashboard() {
            <p className="text-sm text-muted-foreground mt-1">{format(today, "EEEE, d MMMM yyyy")}</p>
            <div className="mt-2"><RangeContext value={range} /></div>
          </div>
-         <div className="flex flex-wrap gap-2 items-center">
+         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
            <DateRangePicker value={range} onChange={setRange} />
-           <Button onClick={() => setReportOpen(true)}>
+           <Button onClick={() => setReportOpen(true)} className="w-full sm:w-auto">
              <FileText className="h-4 w-4 mr-2" /> Full Report
            </Button>
-           <Button onClick={() => setEmployeeDetailsImportOpen(true)} variant="outline">
+           <Button onClick={() => setEmployeeDetailsImportOpen(true)} variant="outline" className="w-full sm:w-auto">
              <UserPlus className="h-4 w-4 mr-2" /> Import Employee Details
            </Button>
-           <Button onClick={() => setExcelImportOpen(true)}>
+           <Button onClick={() => setExcelImportOpen(true)} className="w-full sm:w-auto">
              <Upload className="h-4 w-4 mr-2" /> Import Excel
            </Button>
          </div>
        </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
         <StatCard label="Total Employees" value={stats.total} icon={Users} accent="primary" />
         <div className="cursor-pointer" onClick={() => setMarkedTodayDialogOpen(true)}>
           <StatCard label="Marked Today" value={stats.marked} icon={CheckCircle2} accent="success"
@@ -416,7 +420,7 @@ export default function AdminDashboard() {
 
       {/* Leaderboard */}
       <Card className="card-soft overflow-hidden">
-        <div className="px-6 py-4 border-b border-border flex items-center justify-between">
+        <div className="px-4 py-4 sm:px-6 border-b border-border flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Trophy className="h-4 w-4 text-warning" />
             <div>
@@ -428,7 +432,8 @@ export default function AdminDashboard() {
         {ranked.length === 0 ? (
           <p className="py-12 text-center text-sm text-muted-foreground">No data in this range</p>
         ) : (
-          <div className="overflow-auto max-h-[480px]">
+          <>
+          <div className="hidden overflow-auto max-h-[480px] md:block">
             <table className="w-full text-sm">
               <thead className="bg-muted/40 sticky top-0">
                 <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground">
@@ -489,12 +494,49 @@ export default function AdminDashboard() {
               </tbody>
             </table>
           </div>
+          <div className="max-h-[520px] space-y-3 overflow-y-auto p-3 md:hidden">
+            {ranked.slice(0, 10).map((r, i) => (
+              <div key={r.emp.id} className="rounded-xl border border-border bg-card p-3">
+                <div className="flex items-center gap-3">
+                  <span className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+                    i === 0 ? "bg-warning text-warning-foreground" :
+                    i === 1 ? "bg-muted-foreground/20 text-foreground" :
+                    i === 2 ? "bg-warning-soft text-warning" : "bg-muted text-muted-foreground"
+                  }`}>{i + 1}</span>
+                  <div className="h-9 w-9 shrink-0 rounded-full grid place-items-center text-[11px] font-bold text-white"
+                    style={{ background: r.emp.avatarColor }}>
+                    {r.emp.fullName.split(" ").map(n=>n[0]).slice(0,2).join("")}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-semibold">{r.emp.fullName}</div>
+                    <div className="truncate text-xs text-muted-foreground">{r.emp.designation}</div>
+                  </div>
+                  <span className={`text-xs font-semibold ${officeMetrics.get(r.emp.id)?.meetsThreePerWeek ? "text-success" : "text-muted-foreground"}`}>
+                    {officeMetrics.get(r.emp.id)?.meetsThreePerWeek ? "3/wk" : "Below"}
+                  </span>
+                </div>
+                <div className="mt-3 grid grid-cols-5 gap-2 border-t border-border pt-3 text-center">
+                  {(["WFO","CLT","WFH","PTO"] as AttendanceStatus[]).map((status) => (
+                    <div key={status}>
+                      <div className="text-[10px] font-semibold uppercase text-muted-foreground">{status}</div>
+                      <div className="text-sm font-bold" style={{ color: STATUS_COLOR[status] }}>{r.counts[status]}</div>
+                    </div>
+                  ))}
+                  <div>
+                    <div className="text-[10px] font-semibold uppercase text-muted-foreground">Office</div>
+                    <div className="text-sm font-bold">{officeMetrics.get(r.emp.id)?.officePct ?? 0}%</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          </>
         )}
       </Card>
 
       {/* Insights */}
       <Card className="card-soft overflow-hidden">
-        <div className="px-6 py-4 border-b border-border flex items-center justify-between">
+        <div className="px-4 py-4 sm:px-6 border-b border-border flex items-center justify-between">
           <div className="flex items-center gap-2">
             <BarChart3 className="h-4 w-4 text-primary" />
             <div>
@@ -503,8 +545,8 @@ export default function AdminDashboard() {
             </div>
           </div>
         </div>
-        <div className="p-6">
-          <div className="grid md:grid-cols-2 gap-6">
+        <div className="p-3 sm:p-6">
+          <div className="grid md:grid-cols-2 gap-3 sm:gap-6">
             <InsightCard title="Top 5 — WFO + CLT" subtitle="Most office presence in range"
               items={top5OfficeClient.map(r => ({ emp: r.emp, value: `${r.counts.WFO + r.counts.CLT} days` }))} />
             <InsightCard title="≥ 12 office days" subtitle="Consistent in-office collaborators"
@@ -857,10 +899,10 @@ function InsightCard({
   title, subtitle, items, empty = "No data", tone = "default",
 }: {
   title: string; subtitle: string; tone?: "default" | "warning";
-  items: { emp: any; value: string }[]; empty?: string;
+  items: { emp: Employee; value: string }[]; empty?: string;
 }) {
   return (
-    <Card className="card-soft p-6">
+    <Card className="card-soft p-4 sm:p-6">
       <div className="mb-4">
         <h3 className="font-bold">{title}</h3>
         <p className="text-xs text-muted-foreground">{subtitle}</p>
@@ -870,18 +912,18 @@ function InsightCard({
       ) : (
         <ul className="space-y-2.5">
           {items.map(({ emp, value }) => (
-            <li key={emp.id} className="flex items-center justify-between rounded-lg p-2 hover:bg-muted/50 transition-colors">
-              <div className="flex items-center gap-3">
-                <div className="h-8 w-8 rounded-full grid place-items-center text-[11px] font-bold text-white"
+            <li key={emp.id} className="flex items-center justify-between gap-3 rounded-lg p-2 hover:bg-muted/50 transition-colors">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="h-8 w-8 shrink-0 rounded-full grid place-items-center text-[11px] font-bold text-white"
                   style={{ background: emp.avatarColor }}>
                   {emp.fullName.split(" ").map((n:string)=>n[0]).slice(0,2).join("")}
                 </div>
-                <div>
-                  <div className="text-sm font-medium">{emp.fullName}</div>
-                  <div className="text-[11px] text-muted-foreground">{emp.designation}</div>
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-medium">{emp.fullName}</div>
+                  <div className="truncate text-[11px] text-muted-foreground">{emp.designation}</div>
                 </div>
               </div>
-              <span className={`text-sm font-semibold ${tone === "warning" ? "text-warning" : "text-primary"}`}>{value}</span>
+              <span className={`shrink-0 text-sm font-semibold ${tone === "warning" ? "text-warning" : "text-primary"}`}>{value}</span>
             </li>
           ))}
         </ul>
@@ -901,7 +943,7 @@ function YetToMarkInsightCard({
   const top5 = yetToMarkData.slice(0, 5);
 
   return (
-    <Card className="card-soft p-6 hover:bg-muted/20 transition-colors h-full">
+    <Card className="card-soft p-4 sm:p-6 hover:bg-muted/20 transition-colors h-full">
       <div className="mb-4">
         <div className="flex items-center gap-2">
           <CalendarX2 className="h-4 w-4 text-destructive" />

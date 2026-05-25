@@ -12,7 +12,7 @@ import {
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
-import { LogOut, Trash2, Mail, MapPin, Briefcase, Users, IdCard, Camera, KeyRound, Pencil, Save, X } from "lucide-react";
+import { LogOut, Trash2, Mail, MapPin, Briefcase, Users, IdCard, Camera, KeyRound, Pencil, Save, X, type LucideIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { DESIGNATIONS, Employee } from "@/lib/types";
@@ -234,7 +234,7 @@ function Field({ label, value, onChange, type = "text" }: { label: string; value
 
 function Detail({
   icon: Icon, label, value, editing, onChange, selectOptions,
-}: { icon: any; label: string; value: string; editing: boolean; onChange: (v: string) => void; selectOptions?: string[] }) {
+}: { icon: LucideIcon; label: string; value: string; editing: boolean; onChange: (v: string) => void; selectOptions?: string[] }) {
   return (
     <div className="card-soft p-5 flex items-center gap-4">
       <div className="h-10 w-10 rounded-xl bg-primary-soft text-primary grid place-items-center shrink-0">

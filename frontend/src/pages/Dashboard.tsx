@@ -79,9 +79,9 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-5 sm:space-y-8">
       {/* Hero */}
-      <section className="card-soft p-6 sm:p-8 bg-gradient-primary text-primary-foreground relative overflow-hidden">
+      <section className="card-soft p-4 sm:p-8 bg-gradient-primary text-primary-foreground relative overflow-hidden">
         <div className="absolute -top-20 -right-20 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
         <div className="absolute -bottom-24 left-1/2 h-64 w-64 rounded-full bg-white/5 blur-3xl" />
         <div className="relative flex flex-col md:flex-row md:items-end md:justify-between gap-6">
@@ -94,8 +94,8 @@ export default function Dashboard() {
               {format(now, "EEEE · d MMMM yyyy")}
             </p>
           </div>
-          <div className="flex items-center gap-4 shrink-0 self-start md:self-auto">
-            <div className="bg-white/10 backdrop-blur px-4 sm:px-5 py-3 rounded-xl border border-white/15">
+          <div className="flex w-full items-center gap-4 shrink-0 self-start md:w-auto md:self-auto">
+            <div className="w-full bg-white/10 backdrop-blur px-4 sm:px-5 py-3 rounded-xl border border-white/15 md:w-auto">
               <div className="flex items-center gap-2 text-xs text-primary-foreground/80 mb-0.5">
                 <Clock className="h-3.5 w-3.5" /> Current time
               </div>
@@ -106,7 +106,7 @@ export default function Dashboard() {
       </section>
 
       {/* Mark attendance */}
-      <section className="card-soft p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <section className="card-soft p-4 sm:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h2 className="text-lg font-bold">Today's attendance</h2>
           <p className="text-sm text-muted-foreground mt-1">
@@ -115,7 +115,7 @@ export default function Dashboard() {
               : "You haven't marked attendance for today."}
           </p>
         </div>
-        <Button size="lg" onClick={() => setOpen(true)} className="gap-2">
+        <Button size="lg" onClick={() => setOpen(true)} className="w-full gap-2 sm:w-auto">
           <CalendarPlus className="h-4 w-4" />
           {todayRec ? "Update Attendance" : "Mark Attendance"}
         </Button>
@@ -127,7 +127,7 @@ export default function Dashboard() {
           <h2 className="text-lg font-bold">Monthly Overview</h2>
           <span className="text-xs text-muted-foreground font-medium">{format(now, "MMMM yyyy")}</span>
         </div>
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
           <ClickableStatCard
             label="WFO"
             value={monthly.WFO}
@@ -166,7 +166,7 @@ export default function Dashboard() {
       </section>
 
       {/* Calendar + side summary */}
-      <section className="grid lg:grid-cols-3 gap-6">
+      <section className="grid lg:grid-cols-3 gap-4 sm:gap-6">
         <div className="lg:col-span-2">
           <AttendanceCalendar records={records} onUpdate={handleCalendarUpdate} />
         </div>

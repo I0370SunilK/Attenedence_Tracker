@@ -61,13 +61,13 @@ export default function DateRangePicker({ value, onChange }: Props) {
   };
 
   return (
-    <div className="inline-flex items-center gap-1 bg-card border border-border rounded-xl p-1 shadow-sm">
+    <div className="grid w-full grid-cols-2 gap-1 bg-card border border-border rounded-xl p-1 shadow-sm sm:inline-flex sm:w-auto sm:grid-cols-none">
       {PRESETS.map((p) => (
         <button
           key={p.id}
           onClick={() => onChange(p.build())}
           className={cn(
-            "px-3 py-1.5 text-xs font-medium rounded-lg transition-colors",
+            "min-w-0 px-2 sm:px-3 py-1.5 text-xs font-medium rounded-lg transition-colors",
             value.preset === p.id
               ? "bg-primary text-primary-foreground shadow-sm"
               : "text-muted-foreground hover:text-foreground hover:bg-muted"
@@ -81,26 +81,29 @@ export default function DateRangePicker({ value, onChange }: Props) {
         <PopoverTrigger asChild>
           <button
             className={cn(
-              "flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors",
+              "col-span-2 flex min-w-0 items-center justify-center gap-1.5 px-2 sm:px-3 py-1.5 text-xs font-medium rounded-lg transition-colors sm:col-span-1",
               value.preset === "custom"
                 ? "bg-primary text-primary-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted"
             )}
           >
             <CalendarIcon className="h-3.5 w-3.5" />
-            {value.preset === "custom"
-              ? `${format(value.from, "dd MMM yyyy")} - ${format(value.to, "dd MMM yyyy")}`
-              : "Custom"}
+            {value.preset === "custom" ? (
+              <>
+                <span className="sm:hidden">{format(value.from, "dd MMM")} - {format(value.to, "dd MMM")}</span>
+                <span className="hidden sm:inline">{format(value.from, "dd MMM yyyy")} - {format(value.to, "dd MMM yyyy")}</span>
+              </>
+            ) : "Custom"}
           </button>
         </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="end">
-          <div className="p-5 w-[720px]">
+        <PopoverContent className="w-[calc(100vw-1.5rem)] p-0 sm:w-auto" align="end">
+          <div className="w-full p-3 sm:w-[720px] sm:p-5">
             <div className="mb-5">
               <h4 className="font-semibold text-sm">Pick a custom range</h4>
               <p className="text-xs text-muted-foreground">Choose start and end dates. Future dates are disabled.</p>
             </div>
 
-            <div className="grid grid-cols-2 gap-10">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-10">
               {/* FROM SECTION */}
               <div className="space-y-3">
                 <div className="space-y-1">

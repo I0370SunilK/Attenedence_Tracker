@@ -104,6 +104,16 @@
   }
   .stat-card:hover { box-shadow: var(--shadow-elevated); }
 
+  @media (max-width: 640px) {
+    .card-soft {
+      @apply rounded-xl;
+    }
+
+    .stat-card {
+      @apply p-4;
+    }
+  }
+
   .badge-status {
     @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold;
   }

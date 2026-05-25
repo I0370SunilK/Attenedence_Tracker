@@ -132,20 +132,20 @@ export default function Login() {
         </div>
 
         {/* Content Container */}
-        <div className="relative z-10 w-full px-4 sm:px-6 py-12 sm:py-16 flex items-center justify-center lg:px-8 lg:py-10 lg:bg-transparent">
+        <div className="relative z-10 w-full px-4 sm:px-6 py-5 sm:py-10 flex items-center justify-center lg:px-8 lg:py-10 lg:bg-transparent">
           <div className="w-full max-w-sm">
 
             {/* MOBILE/TABLET: Premium Glassmorphism Card */}
             <div className="lg:hidden">
               {/* Glass Card */}
-              <div className="relative bg-[#0a1f3a]/40 backdrop-blur-xl rounded-3xl border border-white/15 shadow-[0_8px_32px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.1)] pt-3 px-7 pb-7 sm:pt-4 sm:px-9 sm:pb-9">
+              <div className="relative bg-[#0a1f3a]/40 backdrop-blur-xl rounded-3xl border border-white/15 shadow-[0_8px_32px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.1)] pt-2 px-7 pb-7 sm:pt-3 sm:px-9 sm:pb-9">
 
                 {/* Logo at top center */}
-                <div className="flex justify-center mb-2">
+                <div className="flex justify-center mb-0">
                   <img
                     src="/srmlogoo.png"
                     alt="SRMTech"
-                    className="w-56 h-56 object-contain"
+                    className="h-32 w-56 object-contain sm:h-40 sm:w-64"
                     style={{
                       filter: "drop-shadow(0px 0px 16px rgba(0,169,157,0.25))",
                     }}
@@ -153,12 +153,12 @@ export default function Login() {
                 </div>
 
                 {/* Heading */}
-                <div className="text-center mb-6">
-                  <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-white mb-3">
+                <div className="text-center mb-5">
+                  <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-white mb-2">
                     Sign In
                   </h1>
 
-                  <p className="text-sm sm:text-base text-slate-200 font-medium mb-5">
+                  <p className="text-sm sm:text-base text-slate-200 font-medium mb-4">
                     Access your SRMTech attendance dashboard
                   </p>
 

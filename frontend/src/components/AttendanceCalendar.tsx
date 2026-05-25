@@ -36,19 +36,19 @@ export default function AttendanceCalendar({
   }, [cursor]);
 
   return (
-    <div className="card-soft p-6">
-      <div className="flex items-center justify-between mb-5">
+    <div className="card-soft p-4 sm:p-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-5">
         <div>
           <h3 className="font-bold">Attendance Calendar</h3>
           <p className="text-xs text-muted-foreground mt-0.5">Click any day to view or edit attendance.</p>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center justify-between gap-1 rounded-xl bg-muted/40 p-1 sm:bg-transparent sm:p-0">
           <Button variant="ghost" size="icon" className="h-8 w-8"
             disabled={cursor.getTime() <= minMonthStart.getTime()}
             onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1))}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <span className="text-sm font-semibold w-32 text-center">{format(cursor, "MMMM yyyy")}</span>
+          <span className="text-sm font-semibold w-28 sm:w-32 text-center">{format(cursor, "MMM yyyy")}</span>
           <Button variant="ghost" size="icon" className="h-8 w-8"
             disabled={cursor.getTime() >= currentMonthStart.getTime()}
             onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1))}>
@@ -57,10 +57,10 @@ export default function AttendanceCalendar({
         </div>
       </div>
 
-      <div className="grid grid-cols-7 gap-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+      <div className="grid grid-cols-7 gap-1 text-[10px] sm:gap-1.5 sm:text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
         {DOW.map(d => <div key={d} className="text-center py-1">{d}</div>)}
       </div>
-      <div className="grid grid-cols-7 gap-1.5">
+      <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
         {grid.map((d, i) => {
           if (!d) return <div key={i} className="aspect-square" />;
           const k = dateKey(d);
@@ -81,7 +81,7 @@ export default function AttendanceCalendar({
       </div>
 
       {/* Legend */}
-      <div className="mt-5 pt-4 border-t border-border flex flex-wrap items-center gap-x-4 gap-y-2">
+      <div className="mt-4 sm:mt-5 pt-4 border-t border-border flex flex-wrap items-center gap-x-3 sm:gap-x-4 gap-y-2">
         {(Object.keys(STATUS_LABEL) as AttendanceStatus[]).map(s => (
           <div key={s} className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <span className="h-2.5 w-2.5 rounded-sm" style={{ background: STATUS_COLOR[s] }} />
@@ -118,7 +118,7 @@ function DayCell({
         <button
           disabled={isFuture}
           className={cn(
-            "aspect-square rounded-lg border text-left p-1.5 flex flex-col justify-between relative transition-all",
+            "aspect-square rounded-md sm:rounded-lg border text-left p-1 sm:p-1.5 flex flex-col justify-between relative transition-all",
             "hover:shadow-md hover:-translate-y-0.5",
             record ? "border-transparent text-white" : "border-border bg-card",
             isFuture && "opacity-40 hover:translate-y-0 hover:shadow-none cursor-not-allowed",
@@ -126,11 +126,11 @@ function DayCell({
           )}
           style={record ? { background: bg } : weekendBg ? { background: weekendBg } : undefined}
         >
-          <span className={cn("text-xs font-bold", record ? "text-white/95" : "text-foreground")}>
+          <span className={cn("text-[11px] sm:text-xs font-bold", record ? "text-white/95" : "text-foreground")}>
             {date.getDate()}
           </span>
           {record && (
-            <span className="text-[10px] font-bold tracking-wider self-end opacity-95">
+            <span className="text-[8px] sm:text-[10px] font-bold tracking-wider self-end opacity-95">
               {record.status}
             </span>
           )}

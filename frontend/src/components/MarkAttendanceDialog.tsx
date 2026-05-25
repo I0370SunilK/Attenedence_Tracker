@@ -2,10 +2,10 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { AttendanceStatus, STATUS_LABEL } from "@/lib/types";
-import { Building, Home, Plane, Briefcase, Sun, CheckCircle2 } from "lucide-react";
+import { Building, Home, Plane, Briefcase, Sun, CheckCircle2, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const OPTIONS: { v: AttendanceStatus; icon: any; desc: string }[] = [
+const OPTIONS: { v: AttendanceStatus; icon: LucideIcon; desc: string }[] = [
   { v: "WFO", icon: Building, desc: "At the office today" },
   { v: "WFH", icon: Home, desc: "Working from home" },
   { v: "CLT", icon: Briefcase, desc: "At a client location" },

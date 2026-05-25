@@ -16,6 +16,7 @@ export type ExportFormat = "pdf" | "csv";
 export interface ExportColumn {
   header: string;
   /** Returns a string cell. */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   get: (row: any) => string;
 }
 
@@ -24,6 +25,7 @@ interface Props {
   onOpenChange: (o: boolean) => void;
   title: string;
   /** Get rows for the selected range. Return [] if none. */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   getRows: (range: DateRange) => any[];
   columns: ExportColumn[];
   /** File base name (without extension) */

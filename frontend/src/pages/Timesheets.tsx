@@ -68,32 +68,32 @@ export default function Timesheets() {
     .map(k => ({ name: k, value: counts[k] }));
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-5 sm:space-y-8">
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Timesheets</h1>
           <p className="text-sm text-muted-foreground mt-1">Your attendance analytics and history.</p>
           <div className="mt-2"><RangeContext value={range} /></div>
         </div>
-        <div className="flex flex-wrap gap-2 items-center">
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
           <DateRangePicker value={range} onChange={setRange} />
-          <Button variant="outline" onClick={() => setExportOpen(true)}>
+          <Button variant="outline" onClick={() => setExportOpen(true)} className="w-full sm:w-auto">
             <Download className="h-4 w-4 mr-2" /> Export
           </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {(["WFO","WFH","CLT","PTO"] as AttendanceStatus[]).map(k => (
-          <div key={k} className="card-soft p-5">
+          <div key={k} className="card-soft p-4 sm:p-5">
             <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">{k}</p>
             <p className="text-2xl font-bold mt-1.5" style={{ color: STATUS_COLOR[k] }}>{counts[k]}</p>
           </div>
         ))}
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-6">
-        <Card className="card-soft p-6 lg:col-span-2">
+      <div className="grid lg:grid-cols-3 gap-4 sm:gap-6">
+        <Card className="card-soft p-4 sm:p-6 lg:col-span-2">
           <h3 className="font-bold mb-1">Daily Breakdown</h3>
           <p className="text-xs text-muted-foreground mb-4">Stacked counts by status</p>
           <div className="h-72">
@@ -116,7 +116,7 @@ export default function Timesheets() {
           </div>
         </Card>
 
-        <Card className="card-soft p-6">
+        <Card className="card-soft p-4 sm:p-6">
           <h3 className="font-bold mb-1">Distribution</h3>
           <p className="text-xs text-muted-foreground mb-4">Share of work modes</p>
           <div className="h-72">
@@ -138,7 +138,7 @@ export default function Timesheets() {
       </div>
 
       <Card className="card-soft overflow-hidden">
-        <div className="px-6 py-4 border-b border-border flex items-center justify-between">
+        <div className="px-4 py-4 sm:px-6 border-b border-border flex items-center justify-between">
           <div>
             <h3 className="font-bold">Attendance History</h3>
             <p className="text-xs text-muted-foreground">{filtered.length} records in selection</p>
@@ -147,7 +147,8 @@ export default function Timesheets() {
         {filtered.length === 0 ? (
           <div className="py-16"><EmptyState text="No attendance records for this period" /></div>
         ) : (
-          <div className="max-h-[480px] overflow-auto">
+          <>
+          <div className="hidden max-h-[480px] overflow-auto md:block">
             <table className="w-full text-sm">
               <thead className="bg-muted/40 sticky top-0">
                 <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground">
@@ -171,6 +172,23 @@ export default function Timesheets() {
               </tbody>
             </table>
           </div>
+          <div className="max-h-[480px] space-y-2 overflow-y-auto p-3 md:hidden">
+            {filtered.map(r => (
+              <div key={r.date} className="rounded-xl border border-border bg-card p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="font-semibold">{format(new Date(r.date), "dd MMM yyyy")}</div>
+                    <div className="text-xs text-muted-foreground">{format(new Date(r.date), "EEEE")}</div>
+                  </div>
+                  <span className={STATUS_BADGE[r.status]}>{r.status}</span>
+                </div>
+                <div className="mt-3 border-t border-border pt-2 text-xs text-muted-foreground">
+                  Marked at <span className="font-semibold text-foreground tabular-nums">{format(new Date(r.markedAt), "hh:mm a")}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          </>
         )}
       </Card>
 

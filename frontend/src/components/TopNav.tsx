@@ -24,7 +24,7 @@ export default function TopNav() {
 
   return (
     <header className="sticky top-0 z-40 bg-card/80 backdrop-blur-md border-b border-border">
-      <div className="max-w-[1400px] mx-auto px-4 lg:px-6 xl:px-8 h-16 flex items-center justify-between">
+      <div className="max-w-[1400px] mx-auto px-3 sm:px-4 lg:px-6 xl:px-8 h-14 sm:h-16 flex items-center justify-between gap-3">
         <Link to="/dashboard" className="flex items-center gap-2.5">
           <img
             src="/srmtech-logo.png"
@@ -35,7 +35,7 @@ export default function TopNav() {
           />
           <div className="flex flex-col leading-tight">
             <span className="font-bold text-[15px]">Attendly</span>
-            <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+            <span className="hidden sm:inline text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
               Workspace
             </span>
           </div>
@@ -58,6 +58,16 @@ export default function TopNav() {
             }>
             Timesheets
           </NavLink>
+          {role === "admin" && (
+            <NavLink to="/admin"
+              className={({ isActive }) =>
+                `px-4 py-1.5 text-sm font-medium rounded-full transition-colors ${
+                  isActive ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+                }`
+              }>
+              Admin
+            </NavLink>
+          )}
         </nav>
 
         <div className="flex items-center gap-1">

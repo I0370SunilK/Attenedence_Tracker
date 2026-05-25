@@ -112,7 +112,7 @@ export default function Monitor() {
   if (selected) return <EmployeeDetail emp={selected} monthAttendance={monthAttendance[selected.id] || []} onBack={() => setSelected(null)} />;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 sm:space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Employee Monitor</h1>
@@ -173,12 +173,12 @@ export default function Monitor() {
           <p className="text-sm text-muted-foreground">No employees match your search.</p>
         </Card>
       ) : (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {list.map(e => {
             const c = countByStatus(monthAttendance[e.id] || []);
             return (
               <button key={e.id} onClick={() => setSelected(e)}
-                className="card-soft p-5 text-left hover:shadow-elevated hover:-translate-y-0.5 transition-all">
+                className="card-soft p-4 sm:p-5 text-left hover:shadow-elevated hover:-translate-y-0.5 transition-all">
                 <div className="flex items-center gap-3">
                   <div className="h-11 w-11 rounded-xl grid place-items-center text-sm font-bold text-white"
                     style={{ background: e.avatarColor }}>
@@ -310,23 +310,23 @@ function EmployeeDetail({ emp, monthAttendance, onBack }: { emp: Employee; month
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 sm:space-y-6">
       <Button variant="ghost" size="sm" onClick={onBack} className="-ml-2">
         <ArrowLeft className="h-4 w-4 mr-1" /> Back to directory
       </Button>
 
       <Card className="card-soft overflow-hidden">
         <div className="h-24 bg-gradient-primary" />
-        <div className="px-8 pb-6 -mt-10">
+        <div className="px-4 sm:px-8 pb-5 sm:pb-6 -mt-10">
           <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-            <div className="flex items-end gap-4">
-              <div className="h-20 w-20 rounded-2xl border-4 border-card grid place-items-center text-xl font-bold text-white shadow-elevated"
+            <div className="flex items-end gap-3 sm:gap-4 min-w-0">
+              <div className="h-16 w-16 sm:h-20 sm:w-20 shrink-0 rounded-2xl border-4 border-card grid place-items-center text-lg sm:text-xl font-bold text-white shadow-elevated"
                 style={{ background: emp.avatarColor }}>
                 {emp.fullName.split(" ").map(n => n[0]).slice(0,2).join("")}
               </div>
-              <div className="pb-1">
-                <h2 className="text-xl font-bold">{emp.fullName}</h2>
-                <p className="text-sm text-muted-foreground">{emp.employeeId} · {emp.designation} · {emp.team}</p>
+              <div className="min-w-0 pb-1">
+                <h2 className="truncate text-lg sm:text-xl font-bold">{emp.fullName}</h2>
+                <p className="truncate text-sm text-muted-foreground">{emp.employeeId} · {emp.designation} · {emp.team}</p>
               </div>
             </div>
             <div className="flex gap-2">
@@ -335,9 +335,9 @@ function EmployeeDetail({ emp, monthAttendance, onBack }: { emp: Employee; month
               </Button>
             </div>
           </div>
-          <div className="grid sm:grid-cols-2 gap-3 mt-6 text-sm">
-            <div className="flex items-center gap-2 text-muted-foreground"><Mail className="h-4 w-4" /> {emp.email}</div>
-            <div className="flex items-center gap-2 text-muted-foreground"><MapPin className="h-4 w-4" /> {emp.city}, {emp.state}</div>
+          <div className="grid sm:grid-cols-2 gap-3 mt-5 sm:mt-6 text-sm">
+            <div className="flex min-w-0 items-center gap-2 text-muted-foreground"><Mail className="h-4 w-4 shrink-0" /> <span className="truncate">{emp.email}</span></div>
+            <div className="flex min-w-0 items-center gap-2 text-muted-foreground"><MapPin className="h-4 w-4 shrink-0" /> <span className="truncate">{emp.city}, {emp.state}</span></div>
           </div>
         </div>
       </Card>
@@ -384,7 +384,7 @@ function EmployeeDetail({ emp, monthAttendance, onBack }: { emp: Employee; month
                   const to = endOfMonth(from) > today ? today : endOfMonth(from);
                   setRange({ preset: "month", from, to });
                 }}
-                className="h-9 w-52"
+                className="h-9 w-full sm:w-52"
               />
             </div>
           </div>
@@ -417,37 +417,37 @@ function EmployeeDetail({ emp, monthAttendance, onBack }: { emp: Employee; month
         )}
       </Card>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="card-soft p-5">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
+        <Card className="card-soft p-4 sm:p-5">
           <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">3 Days/Week (WFO+CLT)</p>
           <p className={`text-2xl font-bold mt-1 ${meetsThreeDaysPerWeek ? "text-success" : "text-warning"}`}>
             {meetsThreeDaysPerWeek ? "Yes" : "No"}
           </p>
           <p className="text-xs text-muted-foreground mt-1">{avgOfficeDaysPerWeek.toFixed(1)} office days/week in selected timeline</p>
         </Card>
-        <Card className="card-soft p-5">
+        <Card className="card-soft p-4 sm:p-5">
           <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Office Days in Month</p>
           <p className="text-2xl font-bold mt-1 text-primary">{officeDaysThisMonth}</p>
           <p className="text-xs text-muted-foreground mt-1">Current month total (WFO + CLT)</p>
         </Card>
-        <Card className="card-soft p-5">
+        <Card className="card-soft p-4 sm:p-5">
           <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Office Days in Timeline</p>
           <p className="text-2xl font-bold mt-1 text-primary">{officeDaysInRange}</p>
           <p className="text-xs text-muted-foreground mt-1">{format(range.from, "d MMM yyyy")} - {format(range.to > today ? today : range.to, "d MMM yyyy")}</p>
         </Card>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {(["WFO","WFH","CLT","PTO"] as AttendanceStatus[]).map(k => (
-          <div key={k} className="card-soft p-5">
+          <div key={k} className="card-soft p-4 sm:p-5">
             <p className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">{k}</p>
             <p className="text-2xl font-bold mt-1.5" style={{ color: STATUS_COLOR[k] }}>{visibleCounts[k]}</p>
           </div>
         ))}
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-6">
-        <Card className="card-soft p-6 lg:col-span-2">
+      <div className="grid lg:grid-cols-3 gap-4 sm:gap-6">
+        <Card className="card-soft p-4 sm:p-6 lg:col-span-2">
           <h3 className="font-bold mb-1">Last 6 Months</h3>
           <p className="text-xs text-muted-foreground mb-4">Stacked status counts</p>
           <div className="h-64">
@@ -467,7 +467,7 @@ function EmployeeDetail({ emp, monthAttendance, onBack }: { emp: Employee; month
           </div>
         </Card>
 
-        <Card className="card-soft p-6">
+        <Card className="card-soft p-4 sm:p-6">
           <h3 className="font-bold mb-1">Selected Timeline</h3>
           <p className="text-xs text-muted-foreground mb-4">Distribution</p>
           <div className="h-64">
@@ -485,11 +485,11 @@ function EmployeeDetail({ emp, monthAttendance, onBack }: { emp: Employee; month
       </div>
 
       <Card className="card-soft overflow-hidden">
-        <div className="px-6 py-4 border-b border-border">
+        <div className="px-4 py-4 sm:px-6 border-b border-border">
           <h3 className="font-bold">Attendance Statement</h3>
           <p className="text-xs text-muted-foreground">{visibleRecords.length} records</p>
         </div>
-        <div className="max-h-[420px] overflow-auto">
+        <div className="hidden max-h-[420px] overflow-auto md:block">
           <table className="w-full text-sm">
             <thead className="bg-muted/40 sticky top-0">
               <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground">
@@ -510,6 +510,22 @@ function EmployeeDetail({ emp, monthAttendance, onBack }: { emp: Employee; month
               ))}
             </tbody>
           </table>
+        </div>
+        <div className="max-h-[420px] space-y-2 overflow-y-auto p-3 md:hidden">
+          {visibleRecords.map(r => (
+            <div key={r.date} className="rounded-xl border border-border bg-card p-3">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="font-semibold">{format(new Date(r.date), "dd MMM yyyy")}</div>
+                  <div className="text-xs text-muted-foreground">{format(new Date(r.date), "EEEE")}</div>
+                </div>
+                <span className={STATUS_BADGE[r.status]}>{r.status}</span>
+              </div>
+              <div className="mt-3 border-t border-border pt-2 text-xs text-muted-foreground">
+                Marked at <span className="font-semibold text-foreground tabular-nums">{format(new Date(r.markedAt), "hh:mm a")}</span>
+              </div>
+            </div>
+          ))}
         </div>
       </Card>
 
