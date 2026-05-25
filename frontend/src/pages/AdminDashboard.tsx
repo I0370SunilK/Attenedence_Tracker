@@ -2,7 +2,17 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AttendanceRecord, AttendanceStatus, Employee, STATUS_COLOR } from "@/lib/types";
 import { countByStatus } from "@/lib/attendance";
-import { getAttendanceForEmployees, getEmployees, importEmployeeDetails, previewEmployeeDetails, type EmployeeDetailsImportResult } from "@/lib/api";
+import {
+  getAttendanceForEmployees,
+  getEmployees,
+  importEmployeeDetails,
+  previewEmployeeDetails,
+  previewAttendanceImport,
+  importAttendanceExcel,
+  type EmployeeDetailsImportResult,
+  type AttendanceImportResult,
+  type AttendanceImportPreviewRow,
+} from "@/lib/api";
 import { ATTENDANCE_CHANGED_EVENT } from "@/lib/attendanceEvents";
 import StatCard from "@/components/StatCard";
 import { Users, CheckCircle2, AlertCircle, Trophy, FileText, BarChart3, CalendarX2, Loader2, Upload, UserPlus, ArrowLeft } from "lucide-react";
@@ -39,6 +49,8 @@ export default function AdminDashboard() {
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [selectedEmployeeDetailsFile, setSelectedEmployeeDetailsFile] = useState<File | null>(null);
+  const [selectedEmployeeDetailsMonth, setSelectedEmployeeDetailsMonth] = useState<number>(today.getMonth() + 1);
+  const [selectedEmployeeDetailsYear, setSelectedEmployeeDetailsYear] = useState<number>(today.getFullYear());
   const [employeeDetailsImporting, setEmployeeDetailsImporting] = useState(false);
   const [employeeDetailsPreviewing, setEmployeeDetailsPreviewing] = useState(false);
   const [employeeDetailsImportResult, setEmployeeDetailsImportResult] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -46,6 +58,8 @@ export default function AdminDashboard() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedMonth, setSelectedMonth] = useState<number>(today.getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState<number>(today.getFullYear());
+  const [attendancePreview, setAttendancePreview] = useState<AttendanceImportResult | null>(null);
+  const [attendancePreviewing, setAttendancePreviewing] = useState(false);
 
   const todayKey = format(today, "yyyy-MM-dd");
   const rangeFromKey = format(range.from, "yyyy-MM-dd");
@@ -229,6 +243,8 @@ export default function AdminDashboard() {
       const file = e.target.files?.[0];
       if (file) {
         setSelectedFile(file);
+        setAttendancePreview(null);
+        setImportResult(null);
       }
     };
 
@@ -249,26 +265,49 @@ export default function AdminDashboard() {
 
      setEmployeeDetailsPreviewing(true);
      setEmployeeDetailsImportResult(null);
+    try {
+      const result = await previewEmployeeDetails(selectedEmployeeDetailsFile, selectedEmployeeDetailsMonth, selectedEmployeeDetailsYear);
+      const total = result.totalRows ?? 0;
+      const valid = result.validRows ?? 0;
+      const errorCount = result.errors?.length || 0;
+
+      setEmployeeDetailsPreview(result);
+      setEmployeeDetailsImportResult({
+        message: `Preview ready. Total rows ${total} | Ready to import ${valid}${errorCount ? ` | Errors ${errorCount}` : ""}`,
+        type: errorCount ? "error" : "success",
+      });
+    } catch (error) {
+      setEmployeeDetailsPreview(null);
+      setEmployeeDetailsImportResult({
+        message: getErrorMessage(error, "Failed to preview employee details"),
+        type: "error",
+      });
+    } finally {
+      setEmployeeDetailsPreviewing(false);
+    }
+   };
+
+   const handlePreviewAttendanceImport = async () => {
+     if (!selectedFile) {
+       setImportResult({ message: 'Please select a file before previewing', type: 'error' });
+       return;
+     }
+
+     setAttendancePreviewing(true);
+     setImportResult(null);
+     setAttendancePreview(null);
 
      try {
-       const result = await previewEmployeeDetails(selectedEmployeeDetailsFile);
-       const total = result.totalRows ?? 0;
-       const valid = result.validRows ?? 0;
-       const errorCount = result.errors?.length || 0;
-
-       setEmployeeDetailsPreview(result);
-       setEmployeeDetailsImportResult({
-         message: `Preview ready. Total rows ${total} | Ready to import ${valid}${errorCount ? ` | Errors ${errorCount}` : ""}`,
-         type: errorCount ? "error" : "success",
+       const preview = await previewAttendanceImport(selectedFile, selectedMonth, selectedYear);
+       setAttendancePreview(preview);
+       setImportResult({
+         message: `Preview ready: ${preview.totalAttendanceCells ?? 0} cells | New ${preview.newRecords ?? 0} | Update ${preview.updatedRecords ?? 0} | Same ${preview.sameRecords ?? 0}`,
+         type: preview.success ? 'success' : 'error',
        });
      } catch (error) {
-       setEmployeeDetailsPreview(null);
-       setEmployeeDetailsImportResult({
-         message: getErrorMessage(error, "Failed to preview employee details"),
-         type: "error",
-       });
+       setImportResult({ message: getErrorMessage(error, "Failed to preview attendance"), type: 'error' });
      } finally {
-       setEmployeeDetailsPreviewing(false);
+       setAttendancePreviewing(false);
      }
    };
 
@@ -283,38 +322,17 @@ export default function AdminDashboard() {
      }
 
      try {
-       const formData = new FormData();
-       formData.append('file', selectedFile);
-       formData.append('month', selectedMonth.toString());
-       formData.append('year', selectedYear.toString());
-
-       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL ?? ''}/api/attendance/import-excel`, {
-         method: 'POST',
-         body: formData,
-       });
-
-       if (!response.ok) {
-         const errorText = await response.text();
-         throw new Error(errorText || `HTTP error! status: ${response.status}`);
-       }
-
-       const result = await response.json();
-       
-        if (result.success) {
-         const message = `Import successful! Created ${result.createdEmployees?.length || 0} new employees and imported ${result.updatedAttendance?.length || 0} attendance records.`;
-          setImportResult({ message, type: 'success' });
+       const result = await importAttendanceExcel(selectedFile, selectedMonth, selectedYear, "sync");
+       setAttendancePreview(result);
+       const summary = [`New ${result.newRecords ?? 0}`, `Updated ${result.updatedRecords ?? 0}`, `Same ${result.sameRecords ?? 0}`, `Errors ${result.errors?.length ?? 0}`]
+         .filter(Boolean)
+         .join(' | ');
+       setImportResult({ message: result.success ? `Import completed. ${summary}` : `Import failed. ${summary}`, type: result.success ? 'success' : 'error' });
+       if (result.success) {
          await refreshDashboardData();
-       } else {
-         setImportResult({ 
-           message: result.errors?.join(', ') || 'Import failed with unknown error', 
-           type: 'error' 
-         });
        }
      } catch (error) {
-       setImportResult({ 
-         message: getErrorMessage(error, "An unexpected error occurred"), 
-         type: 'error' 
-       });
+       setImportResult({ message: getErrorMessage(error, "An unexpected error occurred"), type: 'error' });
      } finally {
        setImporting(false);
      }
@@ -330,7 +348,7 @@ export default function AdminDashboard() {
      setEmployeeDetailsImportResult(null);
 
      try {
-       const result = await importEmployeeDetails(selectedEmployeeDetailsFile);
+      const result = await importEmployeeDetails(selectedEmployeeDetailsFile, selectedEmployeeDetailsMonth, selectedEmployeeDetailsYear);
        const created = result.createdEmployees?.length || 0;
        const updated = result.updatedEmployees?.length || 0;
        const skipped = result.skippedEmployees?.length || 0;
@@ -696,12 +714,13 @@ export default function AdminDashboard() {
            <DialogHeader>
              <DialogTitle>Import Attendance from Excel</DialogTitle>
              <DialogDescription>
-               Upload an Excel file with the "Attendence Tracking" sheet format. Columns A-E should contain employee info (Employee ID, Full Name, Designation, Team, Email), and columns F onward should contain attendance data with dates in row 1 and attendance codes (WFO, WFH, CLT, PTO, HOL) in subsequent rows. The system will create new employees if they don't exist and import their attendance records for the selected month/year.
+               Upload an Excel file with the horizontal attendance matrix format. Columns A-D must contain employee info: SL No, Employee ID, Employee Name, Project Team. From column E onward the first header row must contain dates and the second header row may contain weekdays. Attendance values are stored horizontally, and only the selected month/year columns will be processed.
              </DialogDescription>
            </DialogHeader>
            <div className="space-y-4">
              <div className="space-y-2">
                <span className="font-medium">Select Month and Year</span>
+               <p className="text-xs text-muted-foreground">Choose the specific month to import so the system only uploads that month instead of processing all data at once.</p>
                <div className="flex gap-4">
                  <div>
                    <label className="text-[11px] text-muted-foreground block mb-1">Month</label>
@@ -753,6 +772,68 @@ export default function AdminDashboard() {
                   )}
                 </div>
               </div>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Button
+                  variant="outline"
+                  onClick={handlePreviewAttendanceImport}
+                  disabled={!selectedFile || attendancePreviewing || importing}
+                  className="flex-1"
+                >
+                  {attendancePreviewing ? "Generating preview..." : "Preview Excel"}
+                </Button>
+                <Button
+                  onClick={handleImportExcel}
+                  disabled={!selectedFile || importing}
+                  className="flex-1"
+                >
+                  {importing ? "Importing attendance..." : "Confirm import"}
+                </Button>
+              </div>
+              {attendancePreview && (
+                <div className="rounded-lg border border-border bg-muted/20 p-4 space-y-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+                    <div><span className="text-muted-foreground">Month:</span> <span className="font-medium">{format(new Date(selectedYear, selectedMonth - 1), "MMMM yyyy")}</span></div>
+                    <div><span className="text-muted-foreground">Employees:</span> <span className="font-medium">{attendancePreview.totalEmployeesProcessed ?? 0}</span></div>
+                    <div><span className="text-muted-foreground">Cells:</span> <span className="font-medium">{attendancePreview.totalAttendanceCells ?? 0}</span></div>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+                    <div><span className="text-muted-foreground">New</span> <span className="font-medium">{attendancePreview.newRecords ?? 0}</span></div>
+                    <div><span className="text-muted-foreground">Updated</span> <span className="font-medium">{attendancePreview.updatedRecords ?? 0}</span></div>
+                    <div><span className="text-muted-foreground">Same</span> <span className="font-medium">{attendancePreview.sameRecords ?? 0}</span></div>
+                    <div><span className="text-muted-foreground">Errors</span> <span className="font-medium">{attendancePreview.errors?.length ?? 0}</span></div>
+                  </div>
+                  {(attendancePreview.previewRows?.length || 0) > 0 && (
+                    <div className="overflow-auto rounded border border-border">
+                      <table className="w-full text-sm">
+                        <thead className="bg-muted/40">
+                          <tr className="text-left text-xs uppercase text-muted-foreground">
+                            <th className="px-3 py-2">Row</th>
+                            <th className="px-3 py-2">Employee ID</th>
+                            <th className="px-3 py-2">Name</th>
+                            <th className="px-3 py-2">Date</th>
+                            <th className="px-3 py-2">Existing</th>
+                            <th className="px-3 py-2">Excel</th>
+                            <th className="px-3 py-2">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {attendancePreview.previewRows?.map((row) => (
+                            <tr key={`${row.rowNumber}-${row.employeeId}-${row.date}`} className="border-t border-border">
+                              <td className="px-3 py-2">{row.rowNumber}</td>
+                              <td className="px-3 py-2">{row.employeeId}</td>
+                              <td className="px-3 py-2">{row.employeeName}</td>
+                              <td className="px-3 py-2">{row.date}</td>
+                              <td className="px-3 py-2">{row.existingValue}</td>
+                              <td className="px-3 py-2">{row.excelValue}</td>
+                              <td className="px-3 py-2">{row.action}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
              {importing && (
                <div className="flex items-center gap-2">
                  <Loader2 className="h-4 w-4 text-primary" />
@@ -766,16 +847,6 @@ export default function AdminDashboard() {
                  </span>
                </div>
              )}
-              {!importing && (
-                <Button
-                  variant="default"
-                  onClick={handleImportExcel}
-                  disabled={!selectedFile}
-                  className="w-full"
-                >
-                  Import Attendance
-                </Button>
-              )}
            </div>
        </DialogContent>
       </Dialog>
@@ -802,6 +873,39 @@ export default function AdminDashboard() {
                  A3657,Naveen Kumar Paripalli,Center Head HYD,naveen.paripalli@srmtech.com
                </span>
              </div>
+            <div className="space-y-2">
+              <span className="font-medium">Select Month and Year</span>
+              <p className="text-xs text-muted-foreground">Choose the month to only import employees with activity that month.</p>
+              <div className="flex gap-4">
+                <div>
+                  <label className="text-[11px] text-muted-foreground block mb-1">Month</label>
+                  <select
+                    className="block w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    value={selectedEmployeeDetailsMonth}
+                    onChange={(e) => setSelectedEmployeeDetailsMonth(parseInt(e.target.value))}
+                  >
+                    {[...Array(12)].map((_, i) => (
+                      <option key={i + 1} value={i + 1}>
+                        {new Date(0, i).toLocaleString('default', { month: 'long' })}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[11px] text-muted-foreground block mb-1">Year</label>
+                  <select
+                    className="block w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    value={selectedEmployeeDetailsYear}
+                    onChange={(e) => setSelectedEmployeeDetailsYear(parseInt(e.target.value))}
+                  >
+                    {[...Array(5)].map((_, i) => {
+                      const year = new Date().getFullYear() - 2 + i;
+                      return <option key={year} value={year}>{year}</option>;
+                    })}
+                  </select>
+                </div>
+              </div>
+            </div>
              <div className="space-y-2">
                <span className="font-medium">Upload Employee Details File</span>
                <div className="flex flex-col gap-2">

@@ -61,19 +61,21 @@ public class EmployeeController {
     }
 
     @PostMapping(value = "/import-details", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<Map<String, Object>> importEmployeeDetails(
+        public ResponseEntity<Map<String, Object>> importEmployeeDetails(
             @RequestParam("file") MultipartFile file,
             @RequestParam(value = "preview", defaultValue = "false") boolean preview,
+            @RequestParam(value = "month", required = false) Integer month,
+            @RequestParam(value = "year", required = false) Integer year,
             HttpServletRequest request
-    ) throws Exception {
+        ) throws Exception {
         // Verify admin access
         Employee admin = verifyAdminAccess(request);
         
         if (preview) {
-            return ResponseEntity.ok(employeeDetailsImportService.previewEmployeeDetailsFile(file));
+            return ResponseEntity.ok(employeeDetailsImportService.previewEmployeeDetailsFile(file, month, year));
         }
-        
-        var result = employeeDetailsImportService.importEmployeeDetailsFile(file);
+
+        var result = employeeDetailsImportService.importEmployeeDetailsFile(file, month, year);
         
         // Audit log: import employee details
         auditService.logAction(

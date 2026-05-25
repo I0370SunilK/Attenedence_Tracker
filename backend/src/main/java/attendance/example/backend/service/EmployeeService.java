@@ -63,6 +63,24 @@ public class EmployeeService {
                 .orElse(null);
     }
 
+    public List<Employee> findByEmployeeIds(List<String> employeeIds) throws Exception {
+        if (employeeIds == null || employeeIds.isEmpty()) {
+            return List.of();
+        }
+        List<String> normalized = new ArrayList<>();
+        for (String employeeId : employeeIds) {
+            if (employeeId != null && !employeeId.isBlank()) {
+                normalized.add(normalizeEmployeeId(employeeId));
+            }
+        }
+        if (normalized.isEmpty()) {
+            return List.of();
+        }
+        List<Employee> employees = employeeRepository.findByEmployeeIdIn(normalized);
+        employees.replaceAll(this::sanitize);
+        return employees;
+    }
+
     public Optional<Employee> findByEmail(String email) throws Exception {
         return employeeRepository.findByEmail(normalizeEmail(email)).map(this::sanitize);
     }

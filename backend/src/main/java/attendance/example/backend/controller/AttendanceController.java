@@ -68,12 +68,12 @@ public class AttendanceController {
     }
 
     @PostMapping("/import-excel")
-    public ResponseEntity<Map<String, Object>> importExcel(
+    public ResponseEntity<?> importExcel(
             @RequestParam("file") MultipartFile file,
             @RequestParam("month") int month,
-            @RequestParam("year") int year
+            @RequestParam("year") int year,
+            @RequestParam(value = "mode", defaultValue = "preview") String mode
     ) throws Exception {
-        Map<String, Object> result = excelImportService.importExcel(file, month, year);
-        return ResponseEntity.ok(result);
+        return ResponseEntity.ok(excelImportService.importExcel(file, month, year, mode));
     }
 }

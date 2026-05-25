@@ -22,6 +22,10 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
+import java.util.HashSet;
+import java.time.Month;
+import java.time.format.TextStyle;
 
 @Service
 public class EmployeeDetailsImportService {
@@ -34,8 +38,8 @@ public class EmployeeDetailsImportService {
         this.employeeService = employeeService;
     }
 
-    public Map<String, Object> previewEmployeeDetailsFile(MultipartFile file) throws Exception {
-        ParsedEmployeeSheet parsed = parseEmployeeDetailsFile(file);
+    public Map<String, Object> previewEmployeeDetailsFile(MultipartFile file, Integer month, Integer year) throws Exception {
+        ParsedEmployeeSheet parsed = parseEmployeeDetailsFile(file, month, year);
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("mode", "preview");
         result.put("fileType", parsed.fileType());
@@ -47,8 +51,8 @@ public class EmployeeDetailsImportService {
         return result;
     }
 
-    public Map<String, Object> importEmployeeDetailsFile(MultipartFile file) throws Exception {
-        ParsedEmployeeSheet parsed = parseEmployeeDetailsFile(file);
+    public Map<String, Object> importEmployeeDetailsFile(MultipartFile file, Integer month, Integer year) throws Exception {
+        ParsedEmployeeSheet parsed = parseEmployeeDetailsFile(file, month, year);
         List<String> createdEmployees = new ArrayList<>();
         List<String> updatedEmployees = new ArrayList<>();
         List<String> skippedEmployees = new ArrayList<>();
@@ -90,24 +94,27 @@ public class EmployeeDetailsImportService {
         return result;
     }
 
-    private ParsedEmployeeSheet parseEmployeeDetailsFile(MultipartFile file) throws Exception {
+    private ParsedEmployeeSheet parseEmployeeDetailsFile(MultipartFile file, Integer month, Integer year) throws Exception {
         validateFile(file);
 
         String fileName = file.getOriginalFilename() == null ? "" : file.getOriginalFilename().toLowerCase(Locale.ROOT);
         if (fileName.endsWith(".csv")) {
-            return parseCsv(file);
+            return parseCsv(file, month, year);
         }
         if (fileName.endsWith(".xlsx") || fileName.endsWith(".xls")) {
-            return parseWorkbook(file);
+            return parseWorkbook(file, month, year);
         }
         throw new ApiException(HttpStatus.BAD_REQUEST, "Supported formats are CSV, XLSX, and XLS for employee details import");
     }
 
-    private ParsedEmployeeSheet parseCsv(MultipartFile file) throws Exception {
+    private ParsedEmployeeSheet parseCsv(MultipartFile file, Integer month, Integer year) throws Exception {
         List<EmployeeImportRow> rows = new ArrayList<>();
         List<String> errors = new ArrayList<>();
         ImportFormat detectedFormat = null;
         int totalRows = 0;
+        List<String> firstHeaderCandidate = null;
+        List<String> secondHeaderCandidate = null;
+        Set<Integer> dateColumns = new HashSet<>();
 
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8))) {
             String rawLine;
@@ -129,8 +136,34 @@ public class EmployeeDetailsImportService {
                 if (detectedFormat == null) {
                     detectedFormat = detectFormat(columns);
                 }
+
+                // Capture first two non-empty rows as possible header candidates for date detection
+                if (firstHeaderCandidate == null) {
+                    firstHeaderCandidate = new ArrayList<>(columns);
+                } else if (secondHeaderCandidate == null) {
+                    secondHeaderCandidate = new ArrayList<>(columns);
+                    // detect date columns now that we have candidates
+                    if (month != null && year != null) {
+                        dateColumns = detectDateColumnsFromHeaders(firstHeaderCandidate, secondHeaderCandidate, month, year);
+                    }
+                }
+
                 if (isHeaderRow(columns, detectedFormat)) {
                     continue;
+                }
+
+                // If month/year provided and we detected date columns, skip rows without activity in those columns
+                if (month != null && year != null && !dateColumns.isEmpty()) {
+                    boolean hasData = false;
+                    for (Integer idx : dateColumns) {
+                        if (idx < columns.size() && !clean(columns.get(idx)).isBlank()) {
+                            hasData = true;
+                            break;
+                        }
+                    }
+                    if (!hasData) {
+                        continue;
+                    }
                 }
 
                 totalRows++;
@@ -143,7 +176,7 @@ public class EmployeeDetailsImportService {
         return new ParsedEmployeeSheet("csv", totalRows, rows, errors);
     }
 
-    private ParsedEmployeeSheet parseWorkbook(MultipartFile file) throws Exception {
+    private ParsedEmployeeSheet parseWorkbook(MultipartFile file, Integer month, Integer year) throws Exception {
         List<EmployeeImportRow> rows = new ArrayList<>();
         List<String> errors = new ArrayList<>();
         DataFormatter formatter = new DataFormatter();
@@ -155,6 +188,21 @@ public class EmployeeDetailsImportService {
             Sheet sheet = workbook.getNumberOfSheets() > 0 ? workbook.getSheetAt(0) : null;
             if (sheet == null) {
                 throw new ApiException(HttpStatus.BAD_REQUEST, "Excel file does not contain any sheets");
+            }
+
+            // Read header row(s) to detect date columns when month/year provided
+            Row dateHeaderRow = sheet.getRow(sheet.getFirstRowNum());
+            List<String> headerColumns = new ArrayList<>();
+            if (dateHeaderRow != null) {
+                int lastCell = dateHeaderRow.getLastCellNum();
+                for (int i = 0; i < lastCell; i++) {
+                    Cell cell = dateHeaderRow.getCell(i, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
+                    headerColumns.add(clean(cell == null ? "" : formatter.formatCellValue(cell)));
+                }
+            }
+            Set<Integer> dateColumns = new HashSet<>();
+            if (month != null && year != null && !headerColumns.isEmpty()) {
+                dateColumns = detectDateColumnsFromHeader(headerColumns, month, year);
             }
 
             for (int rowIndex = sheet.getFirstRowNum(); rowIndex <= sheet.getLastRowNum(); rowIndex++) {
@@ -179,6 +227,20 @@ public class EmployeeDetailsImportService {
                 }
                 if (isHeaderRow(columns, detectedFormat)) {
                     continue;
+                }
+
+                // If month/year provided and we detected date columns, skip rows without activity in those columns
+                if (month != null && year != null && !dateColumns.isEmpty()) {
+                    boolean hasData = false;
+                    for (Integer idx : dateColumns) {
+                        if (idx < columns.size() && !clean(columns.get(idx)).isBlank()) {
+                            hasData = true;
+                            break;
+                        }
+                    }
+                    if (!hasData) {
+                        continue;
+                    }
                 }
 
                 totalRows++;

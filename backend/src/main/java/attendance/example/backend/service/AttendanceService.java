@@ -9,9 +9,12 @@ import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import com.mongodb.bulk.BulkWriteResult;
+import org.springframework.data.mongodb.core.BulkOperations;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -80,6 +83,81 @@ public class AttendanceService {
             }
         }
         return response;
+    }
+
+    public Map<String, Map<String, AttendanceRecord>> loadAttendanceLookupForEmployeeKeys(List<String> employeeKeys, int month, int year) throws Exception {
+        if (employeeKeys == null || employeeKeys.isEmpty()) {
+            return Map.of();
+        }
+
+        YearMonth targetMonth = YearMonth.of(year, month);
+        String from = targetMonth.atDay(1).toString();
+        String to = targetMonth.atEndOfMonth().toString();
+
+        List<String> normalizedKeys = new ArrayList<>();
+        for (String key : employeeKeys) {
+            if (key == null || key.isBlank()) {
+                continue;
+            }
+            String trimmed = key.trim();
+            try {
+                Employee employee = employeeService.findByEmployeeId(trimmed);
+                if (employee != null) {
+                    normalizedKeys.add(employee.getId());
+                    if (!employee.getEmployeeId().equals(employee.getId())) {
+                        normalizedKeys.add(employee.getEmployeeId());
+                    }
+                } else {
+                    normalizedKeys.add(trimmed);
+                }
+            } catch (Exception exception) {
+                normalizedKeys.add(trimmed);
+            }
+        }
+
+        if (normalizedKeys.isEmpty()) {
+            return Map.of();
+        }
+
+        Query query = Query.query(Criteria.where("employeeId").in(normalizedKeys).and("date").gte(from).lte(to));
+        List<Document> documents = mongoTemplate.find(query, Document.class, "attendance_records");
+
+        Map<String, Map<String, AttendanceRecord>> lookup = new LinkedHashMap<>();
+        for (Document document : documents) {
+            AttendanceRecord record = toAttendanceRecord(document);
+            if (record == null) {
+                continue;
+            }
+            lookup.computeIfAbsent(record.getEmployeeId(), key -> new LinkedHashMap<>())
+                    .put(record.getDate(), record);
+        }
+        return lookup;
+    }
+
+    public BulkWriteResult bulkUpsertAttendanceRecords(List<AttendanceRecord> attendanceRecords, boolean preserveEditedFlag) {
+        if (attendanceRecords == null || attendanceRecords.isEmpty()) {
+            return null;
+        }
+
+        BulkOperations bulkOps = mongoTemplate.bulkOps(BulkOperations.BulkMode.UNORDERED, AttendanceRecord.class);
+        for (AttendanceRecord record : attendanceRecords) {
+            Query query = Query.query(Criteria.where("employeeId").is(record.getEmployeeId())
+                    .and("date").is(record.getDate()));
+            Update update = new Update()
+                    .set("employeeId", record.getEmployeeId())
+                    .set("date", record.getDate())
+                    .set("status", record.getStatus())
+                    .set("markedAt", record.getMarkedAt())
+                    .set("edited", preserveEditedFlag ? Boolean.TRUE.equals(record.getEdited()) : false);
+            bulkOps.upsert(query, update);
+        }
+
+        return bulkOps.execute();
+    }
+
+    public List<AttendanceRecord> getAttendanceForEmployeeKey(String employeeKey, String from, String to) throws Exception {
+        Employee employee = employeeService.requireEmployee(employeeKey);
+        return readAttendanceForEmployee(employee, from, to);
     }
 
     public List<MonthlyDetailsResponse> getMonthlyDetails(

@@ -1,9 +1,14 @@
 package attendance.example.backend.model;
 
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
+import org.springframework.data.mongodb.core.index.CompoundIndexes;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 @Document("attendance_records")
+@CompoundIndexes({
+        @CompoundIndex(name = "employee_date_unique", def = "{'employeeId': 1, 'date': 1}", unique = true)
+})
 public class AttendanceRecord {
 
     @Id

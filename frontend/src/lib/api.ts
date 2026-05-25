@@ -112,20 +112,80 @@ export interface EmployeeDetailsImportResult {
   success: boolean;
 }
 
-export async function importEmployeeDetails(file: File): Promise<EmployeeDetailsImportResult> {
+export type AttendanceImportMode = "preview" | "dry-run" | "sync" | "replace-month";
+
+export interface AttendanceImportPreviewRow {
+  rowNumber: number;
+  employeeId: string;
+  employeeName: string;
+  projectTeam: string;
+  date: string;
+  existingValue: string;
+  excelValue: string;
+  action: string;
+}
+
+export interface AttendanceImportResult {
+  mode?: AttendanceImportMode;
+  month?: number;
+  year?: number;
+  totalEmployeesProcessed?: number;
+  totalAttendanceCells?: number;
+  newRecords?: number;
+  updatedRecords?: number;
+  sameRecords?: number;
+  skippedRecords?: number;
+  invalidRecords?: number;
+  failedRecords?: number;
+  processingTimeMs?: number;
+  errors: string[];
+  previewRows?: AttendanceImportPreviewRow[];
+  success: boolean;
+  summary?: string;
+}
+
+export async function importEmployeeDetails(file: File, month?: number, year?: number): Promise<EmployeeDetailsImportResult> {
   const formData = new FormData();
   formData.append("file", file);
+  if (month != null) formData.append("month", month.toString());
+  if (year != null) formData.append("year", year.toString());
   return request<EmployeeDetailsImportResult>("/api/employees/import-details", {
     method: "POST",
     body: formData,
   });
 }
 
-export async function previewEmployeeDetails(file: File): Promise<EmployeeDetailsImportResult> {
+export async function previewEmployeeDetails(file: File, month?: number, year?: number): Promise<EmployeeDetailsImportResult> {
   const formData = new FormData();
   formData.append("file", file);
   formData.append("preview", "true");
+  if (month != null) formData.append("month", month.toString());
+  if (year != null) formData.append("year", year.toString());
   return request<EmployeeDetailsImportResult>("/api/employees/import-details", {
+    method: "POST",
+    body: formData,
+  });
+}
+
+export async function previewAttendanceImport(file: File, month: number, year: number): Promise<AttendanceImportResult> {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("month", month.toString());
+  formData.append("year", year.toString());
+  formData.append("mode", "preview");
+  return request<AttendanceImportResult>(`/api/attendance/import-excel`, {
+    method: "POST",
+    body: formData,
+  });
+}
+
+export async function importAttendanceExcel(file: File, month: number, year: number, mode: AttendanceImportMode): Promise<AttendanceImportResult> {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("month", month.toString());
+  formData.append("year", year.toString());
+  formData.append("mode", mode);
+  return request<AttendanceImportResult>(`/api/attendance/import-excel`, {
     method: "POST",
     body: formData,
   });
