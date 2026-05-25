@@ -13,7 +13,7 @@ export function isSameMonth(date: string, ref = new Date()) {
 }
 
 export function countByStatus(records: AttendanceRecord[]) {
-  const c: Record<AttendanceStatus, number> = { WFO:0, WFH:0, CLT:0, PTO:0, HOL:0, WHO:0 };
+  const c: Record<AttendanceStatus, number> = { WFO:0, WFH:0, CLT:0, PTO:0, HOL:0 };
   records.forEach(r => {
     if (r.status in c) c[r.status]++;
   });

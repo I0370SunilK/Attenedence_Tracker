@@ -95,7 +95,6 @@ export function dayDistribution(
       CLT: 0,
       PTO: 0,
       HOL: 0,
-      WHO: 0,
       NONE: 0,
     };
 
