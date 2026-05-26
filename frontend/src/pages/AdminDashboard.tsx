@@ -476,7 +476,7 @@ export default function AdminDashboard() {
                 </tr>
               </thead>
               <tbody>
-                {ranked.slice(0, 10).map((r, i) => (
+                {ranked.map((r, i) => (
                   <tr key={r.emp.id} className="border-t border-border hover:bg-muted/30">
                     <td className="px-6 py-3.5">
                       <span className={`inline-flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${
@@ -522,7 +522,7 @@ export default function AdminDashboard() {
             </table>
           </div>
           <div className="max-h-[520px] space-y-3 overflow-y-auto p-3 md:hidden">
-            {ranked.slice(0, 10).map((r, i) => (
+            {ranked.map((r, i) => (
               <div key={r.emp.id} className="rounded-xl border border-border bg-card p-3">
                 <div className="flex items-center gap-3">
                   <span className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
@@ -577,14 +577,14 @@ export default function AdminDashboard() {
             <InsightCard title="Top 5 — WFO + CLT" subtitle="Most office presence in range"
               items={top5OfficeClient.map(r => ({ emp: r.emp, value: `${r.counts.WFO + r.counts.CLT} days` }))} />
             <InsightCard title="≥ 12 office days" subtitle="Consistent in-office collaborators"
-              items={avgOver3PerWeek.slice(0, 5).map(r => ({ emp: r.emp, value: `${r.counts.WFO + r.counts.CLT} days` }))}
+              items={avgOver3PerWeek.map(r => ({ emp: r.emp, value: `${r.counts.WFO + r.counts.CLT} days` }))}
               empty="No employees meet this threshold" />
             <InsightCard title="< 4 office days" subtitle="May need a check-in"
-              items={below4PerMonth.slice(0, 5).map(r => ({ emp: r.emp, value: `${r.counts.WFO + r.counts.CLT} days` }))}
+              items={below4PerMonth.map(r => ({ emp: r.emp, value: `${r.counts.WFO + r.counts.CLT} days` }))}
               tone="warning"
               empty="Everyone is on track 🎉" />
             <InsightCard title="Fully Remote" subtitle="No office or client visits"
-              items={fullyWFH.slice(0, 5).map(r => ({ emp: r.emp, value: `${r.counts.WFH} WFH` }))}
+              items={fullyWFH.map(r => ({ emp: r.emp, value: `${r.counts.WFH} WFH` }))}
               empty="No fully remote employees" />
             <div className="cursor-pointer" onClick={() => setYetToMarkDialogOpen(true)}>
               <YetToMarkInsightCard
@@ -1019,8 +1019,13 @@ function InsightCard({
   title: string; subtitle: string; tone?: "default" | "warning";
   items: { emp: Employee; value: string }[]; empty?: string;
 }) {
+  const [expanded, setExpanded] = useState(false);
+  const INITIAL_DISPLAY = 5;
+  const hasMore = items.length > INITIAL_DISPLAY;
+  const visibleItems = expanded ? items : items.slice(0, INITIAL_DISPLAY);
+
   return (
-    <Card className="card-soft p-4 sm:p-6">
+    <Card className="card-soft p-4 sm:p-6 flex flex-col min-h-0">
       <div className="mb-4">
         <h3 className="font-bold">{title}</h3>
         <p className="text-xs text-muted-foreground">{subtitle}</p>
@@ -1028,23 +1033,37 @@ function InsightCard({
       {items.length === 0 ? (
         <p className="text-sm text-muted-foreground py-6 text-center">{empty}</p>
       ) : (
-        <ul className="space-y-2.5">
-          {items.map(({ emp, value }) => (
-            <li key={emp.id} className="flex items-center justify-between gap-3 rounded-lg p-2 hover:bg-muted/50 transition-colors">
-              <div className="flex min-w-0 items-center gap-3">
-                <div className="h-8 w-8 shrink-0 rounded-full grid place-items-center text-[11px] font-bold text-white"
-                  style={{ background: emp.avatarColor }}>
-                  {emp.fullName.split(" ").map((n:string)=>n[0]).slice(0,2).join("")}
-                </div>
-                <div className="min-w-0">
-                  <div className="truncate text-sm font-medium">{emp.fullName}</div>
-                  <div className="truncate text-[11px] text-muted-foreground">{emp.designation}</div>
-                </div>
-              </div>
-              <span className={`shrink-0 text-sm font-semibold ${tone === "warning" ? "text-warning" : "text-primary"}`}>{value}</span>
-            </li>
-          ))}
-        </ul>
+        <>
+          <div className="overflow-y-auto max-h-[280px] overscroll-contain -mx-2 px-2">
+            <ul className="space-y-2.5">
+              {visibleItems.map(({ emp, value }) => (
+                <li key={emp.id} className="flex items-center justify-between gap-3 rounded-lg p-2 hover:bg-muted/50 transition-colors">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="h-8 w-8 shrink-0 rounded-full grid place-items-center text-[11px] font-bold text-white"
+                      style={{ background: emp.avatarColor }}>
+                      {emp.fullName.split(" ").map((n:string)=>n[0]).slice(0,2).join("")}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-medium">{emp.fullName}</div>
+                      <div className="truncate text-[11px] text-muted-foreground">{emp.designation}</div>
+                    </div>
+                  </div>
+                  <span className={`shrink-0 text-sm font-semibold ${tone === "warning" ? "text-warning" : "text-primary"}`}>{value}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          {hasMore && (
+            <button
+              onClick={() => setExpanded(!expanded)}
+              className="mt-3 text-xs font-medium text-primary hover:text-primary/80 transition-colors text-center w-full"
+            >
+              {expanded
+                ? `Show less`
+                : `+${items.length - INITIAL_DISPLAY} more (${items.length} total)`}
+            </button>
+          )}
+        </>
       )}
     </Card>
   );
