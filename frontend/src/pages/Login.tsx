@@ -1,10 +1,12 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/lib/auth";
 import { loginUser } from "@/lib/api";
+import { prefetchEmployeeAttendance, prefetchEmployees } from "@/lib/queries";
 import { toast } from "sonner";
 import ForgotPasswordDialog from "@/components/ForgotPasswordDialog";
 
@@ -17,6 +19,8 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [forgotDialogOpen, setForgotDialogOpen] = useState(false);
+
+  const queryClient = useQueryClient();
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,6 +35,11 @@ export default function Login() {
     try {
       const auth = await loginUser(empId, pwd);
       login(auth);
+      if (auth.role === "user") {
+        void prefetchEmployeeAttendance(queryClient, auth.user.id);
+      } else {
+        void prefetchEmployees(queryClient);
+      }
       toast.success(
         `Welcome back${auth.role === "admin" ? ", Admin" : ""}`
       );
@@ -307,17 +316,19 @@ export default function Login() {
                 </div>
 
                 {/* Create Account Link */}
-                <div className="text-center">
-                  <p className="text-sm text-slate-200">
-                    New to SRMTech?{" "}
-                    <Link
-                      to="/signup"
-                      className="font-bold text-[#00D9CE] hover:text-[#00fdf4] transition-colors"
-                    >
-                      Create Account
-                    </Link>
-                  </p>
-                </div>
+                {false && (
+                  <div className="text-center">
+                    <p className="text-sm text-slate-200">
+                      New to SRMTech?{" "}
+                      <Link
+                        to="/signup"
+                        className="font-bold text-[#00D9CE] hover:text-[#00fdf4] transition-colors"
+                      >
+                        Create Account
+                      </Link>
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -459,17 +470,19 @@ export default function Login() {
                 </div>
 
                 {/* Footer */}
-                <div className="text-center">
-                  <p className="text-[14px] text-slate-600">
-                    New to SRMTech?{" "}
-                    <Link
-                      to="/signup"
-                      className="font-bold text-[#00A99D] hover:text-[#008b82] transition-colors"
-                    >
-                      Create Account
-                    </Link>
-                  </p>
-                </div>
+                {false && (
+                  <div className="text-center">
+                    <p className="text-[14px] text-slate-600">
+                      New to SRMTech?{" "}
+                      <Link
+                        to="/signup"
+                        className="font-bold text-[#00A99D] hover:text-[#008b82] transition-colors"
+                      >
+                        Create Account
+                      </Link>
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>

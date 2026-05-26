@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { AttendanceRecord, AttendanceStatus, STATUS_BADGE, STATUS_COLOR } from "@/lib/types";
-import { getAttendance } from "@/lib/api";
 import { ATTENDANCE_CHANGED_EVENT } from "@/lib/attendanceEvents";
 import { countByStatus } from "@/lib/attendance";
+import { useEmployeeAttendance } from "@/lib/queries";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
@@ -12,39 +12,31 @@ import {
   PieChart, Pie, Cell, Legend,
 } from "recharts";
 import DateRangePicker, { RangeContext } from "@/components/DateRangePicker";
-import { defaultRange, filterRecords, rangeDays } from "@/lib/dateRange";
+import { defaultRange, filterRecords, rangeDays, rangeLabel } from "@/lib/dateRange";
 import ExportDialog from "@/components/ExportDialog";
 import { Download } from "lucide-react";
 import { toast } from "sonner";
 
 export default function Timesheets() {
   const { user } = useAuth();
-  const [all, setAll] = useState<AttendanceRecord[]>([]);
-
   const [range, setRange] = useState(defaultRange());
   const [exportOpen, setExportOpen] = useState(false);
 
-  const loadAttendance = () => {
-    if (!user?.id) return;
-    const from = range.from ? format(range.from, "yyyy-MM-dd") : undefined;
-    const to = range.to ? format(range.to, "yyyy-MM-dd") : undefined;
-    getAttendance(user.id, from, to)
-      .then(setAll)
-      .catch((err) => {
-        setAll([]);
-        toast.error(err instanceof Error ? err.message : "Failed to load attendance");
-      });
-  };
+  const attendanceQuery = useEmployeeAttendance(
+    user?.id,
+    range.from ? format(range.from, "yyyy-MM-dd") : undefined,
+    range.to ? format(range.to, "yyyy-MM-dd") : undefined
+  );
+
+  const all = attendanceQuery.data ?? [];
 
   useEffect(() => {
-    loadAttendance();
-  }, [user?.id, range]);
-
-  useEffect(() => {
-    const onChanged = () => loadAttendance();
+    const onChanged = () => {
+      attendanceQuery.refetch();
+    };
     window.addEventListener(ATTENDANCE_CHANGED_EVENT, onChanged);
     return () => window.removeEventListener(ATTENDANCE_CHANGED_EVENT, onChanged);
-  }, [user?.id, range]);
+  }, [attendanceQuery]);
 
   const filtered = useMemo(
     () => all.sort((a, b) => b.date.localeCompare(a.date)),
@@ -199,6 +191,17 @@ export default function Timesheets() {
         reportTitle={`Attendance — ${user?.fullName}`}
         fileName={`my-attendance-${format(new Date(), "yyyy-MM-dd")}`}
         initialRange={range}
+        summaryItems={[
+          { label: "Employee", value: user?.fullName ?? "-" },
+          { label: "Employee ID", value: user?.employeeId ?? "-" },
+          { label: "Email", value: user?.email ?? "-" },
+          { label: "Period", value: rangeLabel(range) },
+          { label: "WFO", value: String(counts.WFO) },
+          { label: "WFH", value: String(counts.WFH) },
+          { label: "CLT", value: String(counts.CLT) },
+          { label: "PTO", value: String(counts.PTO) },
+          { label: "HOL", value: String(counts.HOL) },
+        ]}
         getRows={(r) => filterRecords(all, r).sort((a, b) => a.date.localeCompare(b.date))}
         columns={[
           { header: "Date", get: (r) => format(new Date(r.date), "dd MMM yyyy") },

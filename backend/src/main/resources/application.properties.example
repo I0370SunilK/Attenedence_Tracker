@@ -1,4 +1,4 @@
 # Copy to application.properties (optional). MONGODB_URI in .env is required at runtime.
-spring.data.mongodb.uri=${MONGODB_URI}
+spring.data.mongodb.uri=${MONGODB_URI:mongodb+srv://sunilofficek_db_user:6NoLPsajHzCYdbod@cluster0.ivqu5bo.mongodb.net/attendance_tracker?retryWrites=true&w=majority&appName=Cluster0}
 spring.data.mongodb.auto-index-creation=true
 server.port=8080

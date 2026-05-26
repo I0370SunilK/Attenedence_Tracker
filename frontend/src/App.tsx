@@ -16,7 +16,16 @@ import AdminDashboard from "./pages/AdminDashboard";
 import Monitor from "./pages/Monitor";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5,
+      cacheTime: 1000 * 60 * 30,
+      refetchOnWindowFocus: false,
+      keepPreviousData: true,
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>

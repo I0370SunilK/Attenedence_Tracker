@@ -20,6 +20,11 @@ export interface ExportColumn {
   get: (row: any) => string;
 }
 
+export interface ExportSummaryItem {
+  label: string;
+  value: string;
+}
+
 interface Props {
   open: boolean;
   onOpenChange: (o: boolean) => void;
@@ -28,6 +33,8 @@ interface Props {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   getRows: (range: DateRange) => any[];
   columns: ExportColumn[];
+  /** Optional summary values to render above the PDF table */
+  summaryItems?: ExportSummaryItem[];
   /** File base name (without extension) */
   fileName: string;
   /** Title rendered inside the PDF report */
@@ -37,7 +44,7 @@ interface Props {
 }
 
 export default function ExportDialog({
-  open, onOpenChange, title, getRows, columns, fileName, reportTitle, initialRange,
+  open, onOpenChange, title, getRows, columns, summaryItems, fileName, reportTitle, initialRange,
 }: Props) {
   const [range, setRange] = useState<DateRange>(initialRange ?? defaultRange());
   const [fmt, setFmt] = useState<ExportFormat>("pdf");
@@ -62,20 +69,76 @@ export default function ExportDialog({
 
   const downloadPDF = () => {
     const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
-    const t = reportTitle ?? title;
-    doc.setFontSize(16); doc.setFont("helvetica", "bold");
-    doc.text(t, 40, 40);
-    doc.setFontSize(10); doc.setFont("helvetica", "normal"); doc.setTextColor(120);
-    doc.text(`Period: ${rangeLabel(range)}`, 40, 58);
-    doc.text(`Generated: ${format(new Date(), "d MMM yyyy · hh:mm a")}`, 40, 72);
+    doc.setFontSize(18);
+    doc.setFont("helvetica", "bold");
+    doc.text("Attendance Analysis Report", 40, 40);
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(80);
+    doc.text(`(${rangeLabel(range)})`, 40, 58);
+
+    const employeeItems = summaryItems?.filter(item => ["Employee", "Employee ID", "Email", "Period"].includes(item.label)) ?? [];
+    const countItems = summaryItems?.filter(item => ["WFO", "WFH", "CLT", "PTO", "HOL"].includes(item.label)) ?? [];
+
+    let cursorY = 78;
+    if (employeeItems.length > 0) {
+      employeeItems.forEach((item, index) => {
+        const y = cursorY + index * 14;
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        doc.text(`${item.label}:`, 40, y);
+        doc.setFont("helvetica", "normal");
+        doc.text(item.value, 120, y);
+      });
+      cursorY += employeeItems.length * 14 + 10;
+    }
+
+    if (countItems.length > 0) {
+      const cardWidth = 92;
+      const cardHeight = 32;
+      const gap = 10;
+      const startX = 40;
+      countItems.forEach((item, index) => {
+        const x = startX + index * (cardWidth + gap);
+        doc.setFillColor(245, 246, 250);
+        doc.roundedRect(x, cursorY, cardWidth, cardHeight, 6, 6, "F");
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        doc.setTextColor(40);
+        doc.text(item.label, x + 8, cursorY + 12);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(14);
+        doc.text(item.value, x + 8, cursorY + 26);
+      });
+      cursorY += cardHeight + 18;
+    }
+
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(120);
+    doc.text(`Generated: ${format(new Date(), "d MMM yyyy · hh:mm a")}`, 40, cursorY);
+    cursorY += 24;
+
     autoTable(doc, {
-      startY: 90,
+      startY: cursorY,
       head: [columns.map(c => c.header)],
       body: rows.map(r => columns.map(c => c.get(r))),
       styles: { fontSize: 9, cellPadding: 6 },
       headStyles: { fillColor: [60, 80, 180], textColor: 255 },
       alternateRowStyles: { fillColor: [245, 247, 252] },
+      theme: "striped",
     });
+
+    const legendY = (doc as any).lastAutoTable?.finalY ? (doc as any).lastAutoTable.finalY + 18 : cursorY + 160;
+    doc.setFontSize(9);
+    doc.setTextColor(100);
+    doc.text(
+      "Legend: WFO = Work From Office • WFH = Work From Home • CLT = Client Location • PTO = Paid Time Off • HOL = Holiday",
+      40,
+      legendY,
+      { maxWidth: 700 }
+    );
+
     doc.save(`${fileName}.pdf`);
   };
 
@@ -105,6 +168,11 @@ export default function ExportDialog({
           <DialogDescription>
             Choose a date range and format. The report will include {columns.length} columns.
           </DialogDescription>
+          {summaryItems && summaryItems.length > 0 && (
+            <p className="text-xs text-muted-foreground">
+              PDF includes {summaryItems.length} summary counts.
+            </p>
+          )}
         </DialogHeader>
 
         <div className="space-y-5 pt-1">

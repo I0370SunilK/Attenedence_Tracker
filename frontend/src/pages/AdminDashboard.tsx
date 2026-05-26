@@ -3,8 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { AttendanceRecord, AttendanceStatus, Employee, STATUS_COLOR } from "@/lib/types";
 import { countByStatus } from "@/lib/attendance";
 import {
-  getAttendanceForEmployees,
-  getEmployees,
   importEmployeeDetails,
   previewEmployeeDetails,
   previewAttendanceImport,
@@ -14,6 +12,7 @@ import {
   type AttendanceImportPreviewRow,
 } from "@/lib/api";
 import { ATTENDANCE_CHANGED_EVENT } from "@/lib/attendanceEvents";
+import { useEmployees, useAttendanceForEmployees } from "@/lib/queries";
 import StatCard from "@/components/StatCard";
 import { Users, CheckCircle2, AlertCircle, Trophy, FileText, BarChart3, CalendarX2, Loader2, Upload, UserPlus, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -38,16 +37,6 @@ export default function AdminDashboard() {
   const today = new Date();
   const navigate = useNavigate();
   const [range, setRange] = useState(defaultRange());
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [rangeAttendance, setRangeAttendance] = useState<Record<string, AttendanceRecord[]>>({});
-  const [todayAttendance, setTodayAttendance] = useState<Record<string, AttendanceRecord[]>>({});
-  const [markedTodayDialogOpen, setMarkedTodayDialogOpen] = useState(false);
-  const [notMarkedDialogOpen, setNotMarkedDialogOpen] = useState(false);
-  const [yetToMarkDialogOpen, setYetToMarkDialogOpen] = useState(false);
-  const [excelImportOpen, setExcelImportOpen] = useState(false);
-  const [employeeDetailsImportOpen, setEmployeeDetailsImportOpen] = useState(false);
-  const [importing, setImporting] = useState(false);
-  const [importResult, setImportResult] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [selectedEmployeeDetailsFile, setSelectedEmployeeDetailsFile] = useState<File | null>(null);
   const [selectedEmployeeDetailsMonth, setSelectedEmployeeDetailsMonth] = useState<number>(today.getMonth() + 1);
   const [selectedEmployeeDetailsYear, setSelectedEmployeeDetailsYear] = useState<number>(today.getFullYear());
@@ -60,10 +49,25 @@ export default function AdminDashboard() {
   const [selectedYear, setSelectedYear] = useState<number>(today.getFullYear());
   const [attendancePreview, setAttendancePreview] = useState<AttendanceImportResult | null>(null);
   const [attendancePreviewing, setAttendancePreviewing] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [markedTodayDialogOpen, setMarkedTodayDialogOpen] = useState(false);
+  const [notMarkedDialogOpen, setNotMarkedDialogOpen] = useState(false);
+  const [yetToMarkDialogOpen, setYetToMarkDialogOpen] = useState(false);
+  const [excelImportOpen, setExcelImportOpen] = useState(false);
+  const [employeeDetailsImportOpen, setEmployeeDetailsImportOpen] = useState(false);
 
+  const employeesQuery = useEmployees();
+  const employees = employeesQuery.data ?? [];
+  const employeeIds = employees.map((employee) => employee.id).filter(Boolean);
   const todayKey = format(today, "yyyy-MM-dd");
   const rangeFromKey = format(range.from, "yyyy-MM-dd");
   const rangeToKey = format(range.to > today ? today : range.to, "yyyy-MM-dd");
+  const rangeAttendanceQuery = useAttendanceForEmployees(employeeIds, rangeFromKey, rangeToKey);
+  const todayAttendanceQuery = useAttendanceForEmployees(employeeIds, todayKey, todayKey);
+  const rangeAttendance = rangeAttendanceQuery.data ?? {};
+  const todayAttendance = todayAttendanceQuery.data ?? {};
+
   const stats = useMemo(() => {
     const total = employees.length;
     let marked = 0;
@@ -185,57 +189,18 @@ export default function AdminDashboard() {
     return result;
   }, [employees, range, rangeAttendance, today]);
 
-  useEffect(() => {
-    getEmployees()
-      .then((data) => setEmployees(data))
-      .catch(() => setEmployees([]));
-  }, []);
-
-  const loadAttendanceData = () => {
-    if (!employees.length) return;
-    const ids = employees.map((e) => e.id).filter(Boolean);
-    Promise.all([
-      getAttendanceForEmployees(ids, rangeFromKey, rangeToKey),
-      getAttendanceForEmployees(ids, todayKey, todayKey),
-    ])
-      .then(([rangeData, todayData]) => {
-        setRangeAttendance(rangeData);
-        setTodayAttendance(todayData);
-      })
-      .catch(() => {
-        setRangeAttendance({});
-        setTodayAttendance({});
-      });
+  const refreshDashboardData = async () => {
+    await employeesQuery.refetch();
+    await Promise.all([rangeAttendanceQuery.refetch(), todayAttendanceQuery.refetch()]);
   };
 
   useEffect(() => {
-    loadAttendanceData();
-  }, [employees, rangeFromKey, rangeToKey, todayKey]);
-
-  useEffect(() => {
-    const onChanged = () => loadAttendanceData();
+    const onChanged = () => {
+      void refreshDashboardData();
+    };
     window.addEventListener(ATTENDANCE_CHANGED_EVENT, onChanged);
     return () => window.removeEventListener(ATTENDANCE_CHANGED_EVENT, onChanged);
-  }, [employees, rangeFromKey, rangeToKey, todayKey]);
-
-  const refreshDashboardData = async () => {
-    const employeeData = await getEmployees();
-    setEmployees(employeeData);
-
-    if (!employeeData.length) {
-      setRangeAttendance({});
-      setTodayAttendance({});
-      return;
-    }
-
-    const [rangeData, todayData] = await Promise.all([
-      getAttendanceForEmployees(employeeData.map((employee) => employee.id), rangeFromKey, rangeToKey),
-      getAttendanceForEmployees(employeeData.map((employee) => employee.id), todayKey, todayKey),
-    ]);
-
-    setRangeAttendance(rangeData);
-    setTodayAttendance(todayData);
-  };
+  }, [rangeAttendanceQuery, todayAttendanceQuery]);
 
    // Export modal
    const [reportOpen, setReportOpen] = useState(false);

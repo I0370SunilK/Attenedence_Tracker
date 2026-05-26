@@ -53,14 +53,24 @@ export default function AdminShell({ children }: { children: ReactNode }) {
             </div>
 
             <nav className="hidden md:flex items-center gap-1 bg-muted/60 rounded-full p-1">
-              <Link to="/admin"
-                className="px-4 py-1.5 text-sm font-medium rounded-full bg-card shadow-sm text-foreground">
+              <NavLink to="/admin" end
+                className={({ isActive }) =>
+                  `px-4 py-1.5 text-sm font-medium rounded-full transition-colors ${
+                    isActive ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+                  }`
+                }
+              >
                 Dashboard
-              </Link>
-              <Link to="/admin/monitor"
-                className="px-4 py-1.5 text-sm font-medium rounded-full text-muted-foreground hover:text-foreground">
+              </NavLink>
+              <NavLink to="/admin/monitor"
+                className={({ isActive }) =>
+                  `px-4 py-1.5 text-sm font-medium rounded-full transition-colors ${
+                    isActive ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+                  }`
+                }
+              >
                 <Monitor className="h-3.5 w-3.5 inline mr-1" /> Monitor
-              </Link>
+              </NavLink>
             </nav>
 
             <div className="flex items-center gap-1">

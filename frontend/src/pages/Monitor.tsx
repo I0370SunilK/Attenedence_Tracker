@@ -5,11 +5,9 @@ import {
   approveDeletionRequest,
   dismissDeletionRequest,
   emitPendingDeletionRequestsChanged,
-  getAttendance,
-  getAttendanceForEmployees,
-  getEmployees,
-  getPendingDeletionRequests,
 } from "@/lib/api";
+import { ATTENDANCE_CHANGED_EVENT } from "@/lib/attendanceEvents";
+import { useEmployees, useAttendanceForEmployees, usePendingDeletionRequests } from "@/lib/queries";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -36,32 +34,30 @@ export default function Monitor() {
   }, []);
   const [q, setQ] = useState("");
   const [selected, setSelected] = useState<Employee | null>(null);
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [monthAttendance, setMonthAttendance] = useState<Record<string, AttendanceRecord[]>>({});
-  const [requests, setRequests] = useState<DeletionRequest[]>([]);
-  const [approvingRequestId, setApprovingRequestId] = useState<string | null>(null);
-  const [dismissingRequestId, setDismissingRequestId] = useState<string | null>(null);
   const monthFrom = format(startOfMonth(today), "yyyy-MM-dd");
   const monthTo = format(today, "yyyy-MM-dd");
 
-  useEffect(() => {
-    getEmployees()
-      .then(setEmployees)
-      .catch(() => setEmployees([]));
-  }, []);
+  const employeesQuery = useEmployees();
+  const employees = employeesQuery.data ?? [];
+  const attendanceQuery = useAttendanceForEmployees(
+    employees.map((e) => e.id).filter(Boolean),
+    monthFrom,
+    monthTo
+  );
+  const monthAttendance = attendanceQuery.data ?? {};
+  const pendingRequestsQuery = usePendingDeletionRequests();
+  const requests = pendingRequestsQuery.data ?? [];
+  const [approvingRequestId, setApprovingRequestId] = useState<string | null>(null);
+  const [dismissingRequestId, setDismissingRequestId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!employees.length) return;
-    getAttendanceForEmployees(employees.map(e => e.id), monthFrom, monthTo)
-      .then(setMonthAttendance)
-      .catch(() => setMonthAttendance({}));
-  }, [employees, monthFrom, monthTo]);
-
-  useEffect(() => {
-    getPendingDeletionRequests()
-      .then(setRequests)
-      .catch(() => setRequests([]));
-  }, []);
+    const onChanged = () => {
+      void attendanceQuery.refetch();
+      void pendingRequestsQuery.refetch();
+    };
+    window.addEventListener(ATTENDANCE_CHANGED_EVENT, onChanged);
+    return () => window.removeEventListener(ATTENDANCE_CHANGED_EVENT, onChanged);
+  }, [attendanceQuery, pendingRequestsQuery]);
 
   const list = useMemo(() => {
     return [...employees]
@@ -73,10 +69,8 @@ export default function Monitor() {
       );
   }, [employees, q]);
 
-  const refreshRequests = () => {
-    getPendingDeletionRequests()
-      .then(setRequests)
-      .catch(() => setRequests([]));
+  const refreshRequests = async () => {
+    await pendingRequestsQuery.refetch();
   };
 
   const handleApproveRequest = async (request: DeletionRequest) => {

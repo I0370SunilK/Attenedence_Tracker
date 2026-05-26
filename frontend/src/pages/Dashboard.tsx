@@ -2,8 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { AttendanceRecord, AttendanceStatus, STATUS_BADGE } from "@/lib/types";
 import { attendanceStreak, countByStatus, dateKey, greeting, isSameMonth, notMarkedThisMonth, weeklyCounts } from "@/lib/attendance";
-import { getAttendance, markAttendance } from "@/lib/api";
+import { markAttendance } from "@/lib/api";
 import { emitAttendanceChanged } from "@/lib/attendanceEvents";
+import { useEmployeeAttendance } from "@/lib/queries";
 import StatCard from "@/components/StatCard";
 import ClickableStatCard from "@/components/ClickableStatCard";
 import AttendanceDetailsModal from "@/components/AttendanceDetailsModal";
@@ -18,23 +19,17 @@ import { format } from "date-fns";
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [open, setOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [now, setNow] = useState(new Date());
 
+  const { data: records = [] } = useEmployeeAttendance(user?.id);
+
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(t);
   }, []);
-
-  useEffect(() => {
-    if (!user) return;
-    getAttendance(user.id)
-      .then(setRecords)
-      .catch(() => setRecords([]));
-  }, [user]);
 
   const monthly = useMemo(() => countByStatus(records.filter(r => isSameMonth(r.date))), [records]);
   const notMarked = useMemo(() => notMarkedThisMonth(records), [records]);
