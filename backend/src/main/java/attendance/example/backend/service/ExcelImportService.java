@@ -38,8 +38,12 @@ public class ExcelImportService {
     private static final int EMPLOYEE_ID_COLUMN = 1; // column B
     private static final int EMPLOYEE_NAME_COLUMN = 2; // column C
     private static final int PROJECT_TEAM_COLUMN = 3; // column D
-    private static final int FIRST_DATA_ROW_INDEX = 2; // row 3 in Excel
+    private static final int FIRST_DATA_ROW_INDEX = 2; // default row 3 in Excel
     private static final int PREVIEW_LIMIT = 100;
+    private static final Set<String> WEEKDAY_LABELS = Set.of(
+            "MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN",
+            "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"
+    );
     private static final DateTimeFormatter[] DATE_FORMATTERS = new DateTimeFormatter[]{
             DateTimeFormatter.ofPattern("yyyy-MM-dd").withResolverStyle(ResolverStyle.SMART),
             DateTimeFormatter.ofPattern("dd/MM/yyyy").withResolverStyle(ResolverStyle.SMART),
@@ -120,7 +124,7 @@ public class ExcelImportService {
                 return new ParsedAttendanceSheet(List.of(), List.of(), errors);
             }
 
-            Row dateHeader = sheet.getRow(0);
+            Row dateHeader = findDateHeaderRow(sheet, errors);
             if (dateHeader == null) {
                 errors.add("Date header row is missing");
                 return new ParsedAttendanceSheet(List.of(), List.of(), errors);
@@ -138,10 +142,15 @@ public class ExcelImportService {
                 return new ParsedAttendanceSheet(List.of(), List.of(), errors);
             }
 
+            int firstDataRowIndex = dateHeader.getRowNum() + 1;
+            Row nextRow = sheet.getRow(firstDataRowIndex);
+            if (isWeekdayRow(nextRow, selectedDateColumns.keySet())) {
+                firstDataRowIndex++;
+            }
+
             Set<String> seenEmployees = new HashSet<>();
-            int first = sheet.getFirstRowNum();
             int last = sheet.getLastRowNum();
-            for (int rowIndex = FIRST_DATA_ROW_INDEX; rowIndex <= last; rowIndex++) {
+            for (int rowIndex = firstDataRowIndex; rowIndex <= last; rowIndex++) {
                 Row row = sheet.getRow(rowIndex);
                 if (row == null) {
                     continue;
@@ -151,7 +160,8 @@ public class ExcelImportService {
                 String fullName = clean(getCellValue(row, EMPLOYEE_NAME_COLUMN));
                 String projectTeam = clean(getCellValue(row, PROJECT_TEAM_COLUMN));
 
-                if (employeeId.isBlank() && fullName.isBlank() && projectTeam.isBlank() && rowIsEmpty(row, selectedDateColumns.keySet())) {
+                if (employeeId.isBlank() && fullName.isBlank() && projectTeam.isBlank()
+                        && (rowIsEmpty(row, selectedDateColumns.keySet()) || rowHasOnlyWeekdayLabels(row, selectedDateColumns.keySet()))) {
                     continue;
                 }
                 if (employeeId.isBlank()) {
@@ -249,6 +259,47 @@ public class ExcelImportService {
             }
         }
         return true;
+    }
+
+    private Row findDateHeaderRow(Sheet sheet, List<String> errors) {
+        int firstRow = sheet.getFirstRowNum();
+        int lastRow = Math.min(sheet.getLastRowNum(), firstRow + 5);
+        for (int rowIndex = firstRow; rowIndex <= lastRow; rowIndex++) {
+            Row row = sheet.getRow(rowIndex);
+            if (row == null) {
+                continue;
+            }
+            Map<Integer, LocalDate> candidate = parseDateColumns(row, new ArrayList<>());
+            if (!candidate.isEmpty()) {
+                return row;
+            }
+        }
+        return null;
+    }
+
+    private boolean isWeekdayRow(Row row, Set<Integer> columns) {
+        if (row == null || columns == null || columns.isEmpty()) {
+            return false;
+        }
+        boolean foundNonBlank = false;
+        for (Integer colIndex : columns) {
+            String value = clean(getCellValue(row, colIndex)).toUpperCase(Locale.ROOT);
+            if (value.isBlank()) {
+                continue;
+            }
+            foundNonBlank = true;
+            if (ALLOWED_STATUSES.contains(value)) {
+                return false;
+            }
+            if (!WEEKDAY_LABELS.contains(value)) {
+                return false;
+            }
+        }
+        return foundNonBlank;
+    }
+
+    private boolean rowHasOnlyWeekdayLabels(Row row, Set<Integer> columns) {
+        return isWeekdayRow(row, columns);
     }
 
     private void buildPreview(ParsedAttendanceSheet parsed, Map<String, Employee> employeeMap,

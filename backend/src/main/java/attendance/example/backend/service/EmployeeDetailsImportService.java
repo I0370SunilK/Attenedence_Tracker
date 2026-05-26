@@ -413,6 +413,46 @@ public class EmployeeDetailsImportService {
         }
     }
 
+    private Set<Integer> detectDateColumnsFromHeaders(List<String> firstHeader, List<String> secondHeader, Integer month, Integer year) {
+        Set<Integer> dateColumns = new HashSet<>();
+        if (firstHeader == null || firstHeader.isEmpty() || month == null || year == null) {
+            return dateColumns;
+        }
+
+        String targetMonth = Month.of(month).getDisplayName(TextStyle.SHORT, Locale.ENGLISH).toUpperCase();
+        String targetYear = String.valueOf(year);
+
+        for (int i = 0; i < firstHeader.size(); i++) {
+            String header = clean(firstHeader.get(i)).toUpperCase();
+            // Check if header contains month name or year
+            if (header.contains(targetMonth) || header.contains(targetYear)) {
+                dateColumns.add(i);
+            }
+        }
+
+        return dateColumns;
+    }
+
+    private Set<Integer> detectDateColumnsFromHeader(List<String> headers, Integer month, Integer year) {
+        Set<Integer> dateColumns = new HashSet<>();
+        if (headers == null || headers.isEmpty() || month == null || year == null) {
+            return dateColumns;
+        }
+
+        String targetMonth = Month.of(month).getDisplayName(TextStyle.SHORT, Locale.ENGLISH).toUpperCase();
+        String targetYear = String.valueOf(year);
+
+        for (int i = 0; i < headers.size(); i++) {
+            String header = clean(headers.get(i)).toUpperCase();
+            // Check if header contains month name or year
+            if (header.contains(targetMonth) || header.contains(targetYear)) {
+                dateColumns.add(i);
+            }
+        }
+
+        return dateColumns;
+    }
+
     private List<String> parseLine(String line, char delimiter) {
         List<String> values = new ArrayList<>();
         StringBuilder current = new StringBuilder();
