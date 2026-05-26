@@ -70,98 +70,104 @@ export default function FullReportAnalyticsDialog({
 
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => !busy && onOpenChange(nextOpen)}>
-      <DialogContent className="sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Export Full Analytics Report</DialogTitle>
-          <DialogDescription>
-            Download comprehensive attendance analytics including leaderboard, top performers, and insights.
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="sm:max-w-lg p-0 max-h-[85vh]">
+        <div className="flex flex-col max-h-[85vh]">
+          <DialogHeader className="flex-shrink-0 px-6 pt-6 pb-2">
+            <DialogTitle>Export Full Analytics Report</DialogTitle>
+            <DialogDescription>
+              Download comprehensive attendance analytics including leaderboard, top performers, and insights.
+            </DialogDescription>
+          </DialogHeader>
 
-        <div className="space-y-5 pt-1">
-          <div>
-            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Date Range
-            </Label>
-            <div className="mt-2">
-              <DateRangePicker value={range} onChange={setRange} />
+          <div className="overflow-y-auto overscroll-contain px-6 flex-1 min-h-0">
+            <div className="space-y-5 pt-1 pb-4">
+              <div>
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Date Range
+                </Label>
+                <div className="mt-2">
+                  <DateRangePicker value={range} onChange={setRange} />
+                </div>
+              </div>
+
+              <div>
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Format
+                </Label>
+                <RadioGroup
+                  value={fmt}
+                  onValueChange={(value) => setFmt(value as ExportFormat)}
+                  className="mt-2 grid grid-cols-2 gap-3"
+                >
+                  <label
+                    htmlFor="pdf"
+                    className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition-all ${
+                      fmt === "pdf" ? "border-primary bg-primary/5" : "border-border hover:bg-muted/50"
+                    }`}
+                  >
+                    <RadioGroupItem value="pdf" id="pdf" />
+                    <FileText className="h-4 w-4 text-destructive" />
+                    <div>
+                      <p className="text-sm font-semibold">PDF</p>
+                      <p className="text-[11px] text-muted-foreground">Print-ready</p>
+                    </div>
+                  </label>
+
+                  <label
+                    htmlFor="csv"
+                    className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition-all ${
+                      fmt === "csv" ? "border-primary bg-primary/5" : "border-border hover:bg-muted/50"
+                    }`}
+                  >
+                    <RadioGroupItem value="csv" id="csv" />
+                    <FileSpreadsheet className="h-4 w-4 text-success" />
+                    <div>
+                      <p className="text-sm font-semibold">CSV</p>
+                      <p className="text-[11px] text-muted-foreground">For spreadsheets</p>
+                    </div>
+                  </label>
+                </RadioGroup>
+              </div>
+
+              <div className="flex items-center justify-between rounded-xl bg-muted/50 px-4 py-3">
+                <p className="text-xs text-muted-foreground">Employees in database</p>
+                <p className={`text-sm font-bold tabular-nums ${hasData ? "text-foreground" : "text-muted-foreground"}`}>
+                  {employees.length}
+                </p>
+              </div>
+
+              <div className="space-y-1 rounded-lg bg-muted/30 p-3 text-xs text-muted-foreground">
+                <p className="font-semibold text-foreground">Report includes:</p>
+                <ul className="ml-2 space-y-1">
+                  <li>- Leaderboard (all employees)</li>
+                  <li>- Top 5 employees by office presence</li>
+                  <li>{`- Consistent in-office employees (>= 12 days)`}</li>
+                  <li>{`- Employees with < 4 office days`}</li>
+                  <li>- Fully remote employees</li>
+                </ul>
+              </div>
             </div>
           </div>
 
-          <div>
-            <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Format
-            </Label>
-            <RadioGroup
-              value={fmt}
-              onValueChange={(value) => setFmt(value as ExportFormat)}
-              className="mt-2 grid grid-cols-2 gap-3"
-            >
-              <label
-                htmlFor="pdf"
-                className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition-all ${
-                  fmt === "pdf" ? "border-primary bg-primary/5" : "border-border hover:bg-muted/50"
-                }`}
-              >
-                <RadioGroupItem value="pdf" id="pdf" />
-                <FileText className="h-4 w-4 text-destructive" />
-                <div>
-                  <p className="text-sm font-semibold">PDF</p>
-                  <p className="text-[11px] text-muted-foreground">Print-ready</p>
-                </div>
-              </label>
-
-              <label
-                htmlFor="csv"
-                className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition-all ${
-                  fmt === "csv" ? "border-primary bg-primary/5" : "border-border hover:bg-muted/50"
-                }`}
-              >
-                <RadioGroupItem value="csv" id="csv" />
-                <FileSpreadsheet className="h-4 w-4 text-success" />
-                <div>
-                  <p className="text-sm font-semibold">CSV</p>
-                  <p className="text-[11px] text-muted-foreground">For spreadsheets</p>
-                </div>
-              </label>
-            </RadioGroup>
-          </div>
-
-          <div className="flex items-center justify-between rounded-xl bg-muted/50 px-4 py-3">
-            <p className="text-xs text-muted-foreground">Employees in database</p>
-            <p className={`text-sm font-bold tabular-nums ${hasData ? "text-foreground" : "text-muted-foreground"}`}>
-              {employees.length}
-            </p>
-          </div>
-
-          <div className="space-y-1 rounded-lg bg-muted/30 p-3 text-xs text-muted-foreground">
-            <p className="font-semibold text-foreground">Report includes:</p>
-            <ul className="ml-2 space-y-1">
-              <li>- Leaderboard (all employees)</li>
-              <li>- Top 5 employees by office presence</li>
-              <li>- Consistent in-office employees (&gt;= 12 days)</li>
-              <li>- Employees with &lt; 4 office days</li>
-              <li>- Fully remote employees</li>
-            </ul>
+          <div className="flex-shrink-0 border-t px-6 py-4 bg-background">
+            <DialogFooter>
+              <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
+                Cancel
+              </Button>
+              <Button onClick={handleDownload} disabled={!hasData || busy}>
+                {busy ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating...
+                  </>
+                ) : (
+                  <>
+                    <Download className="mr-2 h-4 w-4" /> Download {fmt.toUpperCase()}
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
           </div>
         </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
-            Cancel
-          </Button>
-          <Button onClick={handleDownload} disabled={!hasData || busy}>
-            {busy ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating...
-              </>
-            ) : (
-              <>
-                <Download className="mr-2 h-4 w-4" /> Download {fmt.toUpperCase()}
-              </>
-            )}
-          </Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

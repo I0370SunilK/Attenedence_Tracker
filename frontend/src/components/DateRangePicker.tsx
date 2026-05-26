@@ -96,70 +96,80 @@ export default function DateRangePicker({ value, onChange }: Props) {
             ) : "Custom"}
           </button>
         </PopoverTrigger>
-        <PopoverContent className="w-[calc(100vw-1.5rem)] p-0 sm:w-auto" align="end">
-          <div className="w-full p-3 sm:w-[720px] sm:p-5">
-            <div className="mb-5">
-              <h4 className="font-semibold text-sm">Pick a custom range</h4>
-              <p className="text-xs text-muted-foreground">Choose start and end dates. Future dates are disabled.</p>
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-10">
-              {/* FROM SECTION */}
-              <div className="space-y-3">
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-muted-foreground tracking-tight">From</label>
-                  <div className={cn(
-                    "p-2 border rounded-md text-sm font-medium transition-colors",
-                    selectedFrom ? "bg-primary/5 border-primary/20" : "bg-muted/30"
-                  )}>
-                    {selectedFrom ? format(selectedFrom, "dd MMM yyyy") : "Select start date"}
-                  </div>
-                </div>
-                <div className="border rounded-md bg-background">
-                  <Calendar
-                    mode="single"
-                    selected={selectedFrom}
-                    onSelect={setSelectedFrom}
-                    month={fromMonth}
-                    onMonthChange={setFromMonth}
-                    disabled={(date) => isAfter(date, today)}
-                    fromYear={startYear}
-                    toYear={endYear}
-                    captionLayout="dropdown-buttons"
-                    className="p-3"
-                  />
-                </div>
+        <PopoverContent 
+          className="w-[calc(100vw-1.5rem)] p-0 sm:w-auto"
+          align="center"
+          side="bottom"
+          sideOffset={4}
+          collisionPadding={{ top: 20, bottom: 20 }}
+          avoidCollisions={true}
+          onOpenAutoFocus={(e) => e.preventDefault()}
+        >
+          <div className="flex flex-col max-h-[70vh] sm:max-h-[65vh]">
+            <div className="overflow-y-auto overscroll-contain p-3 sm:p-5">
+              <div className="mb-4 sm:mb-5">
+                <h4 className="font-semibold text-sm">Pick a custom range</h4>
+                <p className="text-xs text-muted-foreground">Choose start and end dates. Future dates are disabled.</p>
               </div>
 
-              {/* TO SECTION */}
-              <div className="space-y-3">
-                <div className="space-y-1">
-                  <label className="text-[10px] uppercase font-bold text-muted-foreground tracking-tight">To</label>
-                  <div className={cn(
-                    "p-2 border rounded-md text-sm font-medium transition-colors",
-                    selectedTo ? "bg-primary/5 border-primary/20" : "bg-muted/30"
-                  )}>
-                    {selectedTo ? format(selectedTo, "dd MMM yyyy") : "Select end date"}
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-8">
+                {/* FROM SECTION */}
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <label className="text-[10px] uppercase font-bold text-muted-foreground tracking-tight">From</label>
+                    <div className={cn(
+                      "p-2 border rounded-md text-sm font-medium transition-colors",
+                      selectedFrom ? "bg-primary/5 border-primary/20" : "bg-muted/30"
+                    )}>
+                      {selectedFrom ? format(selectedFrom, "dd MMM yyyy") : "Select start date"}
+                    </div>
+                  </div>
+                  <div className="border rounded-md bg-background">
+                    <Calendar
+                      mode="single"
+                      selected={selectedFrom}
+                      onSelect={setSelectedFrom}
+                      month={fromMonth}
+                      onMonthChange={setFromMonth}
+                      disabled={(date) => isAfter(date, today)}
+                      fromYear={startYear}
+                      toYear={endYear}
+                      captionLayout="dropdown"
+                      className="p-2 sm:p-3"
+                    />
                   </div>
                 </div>
-                <div className="border rounded-md bg-background">
-                  <Calendar
-                    mode="single"
-                    selected={selectedTo}
-                    onSelect={setSelectedTo}
-                    month={toMonth}
-                    onMonthChange={setToMonth}
-                    disabled={(date) => isAfter(date, today)}
-                    fromYear={startYear}
-                    toYear={endYear}
-                    captionLayout="dropdown-buttons"
-                    className="p-3"
-                  />
+
+                {/* TO SECTION */}
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <label className="text-[10px] uppercase font-bold text-muted-foreground tracking-tight">To</label>
+                    <div className={cn(
+                      "p-2 border rounded-md text-sm font-medium transition-colors",
+                      selectedTo ? "bg-primary/5 border-primary/20" : "bg-muted/30"
+                    )}>
+                      {selectedTo ? format(selectedTo, "dd MMM yyyy") : "Select end date"}
+                    </div>
+                  </div>
+                  <div className="border rounded-md bg-background">
+                    <Calendar
+                      mode="single"
+                      selected={selectedTo}
+                      onSelect={setSelectedTo}
+                      month={toMonth}
+                      onMonthChange={setToMonth}
+                      disabled={(date) => isAfter(date, today)}
+                      fromYear={startYear}
+                      toYear={endYear}
+                      captionLayout="dropdown"
+                      className="p-2 sm:p-3"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 mt-6 pt-4 border-t">
+            <div className="flex-shrink-0 flex justify-end gap-2 px-3 pb-3 sm:px-5 sm:pb-5 pt-0 sm:pt-0">
               <Button variant="outline" size="sm" onClick={() => setOpen(false)}>
                 Cancel
               </Button>

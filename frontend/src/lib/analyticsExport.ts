@@ -89,10 +89,11 @@ export function buildAnalyticsReport(
       return { emp: employee, counts: countByStatus(recs) };
     })
     .sort((a, b) => {
-      if (b.counts.WFO !== a.counts.WFO) return b.counts.WFO - a.counts.WFO;
-      if (b.counts.CLT !== a.counts.CLT) return b.counts.CLT - a.counts.CLT;
-      if (b.counts.WFH !== a.counts.WFH) return b.counts.WFH - a.counts.WFH;
-      return a.counts.PTO - b.counts.PTO;
+      const officeA = a.counts.WFO + a.counts.CLT;
+      const officeB = b.counts.WFO + b.counts.CLT;
+      if (officeB !== officeA) return officeB - officeA;
+      if (a.counts.WFH !== b.counts.WFH) return a.counts.WFH - b.counts.WFH;
+      return a.emp.fullName.localeCompare(b.emp.fullName);
     });
 
   // Calculate total working days in range

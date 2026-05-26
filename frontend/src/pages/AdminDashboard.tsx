@@ -97,10 +97,11 @@ export default function AdminDashboard() {
       const recs = rangeAttendance[e.id] || [];
       return { emp: e, counts: countByStatus(recs) };
     }).sort((a, b) => {
-      if (b.counts.WFO !== a.counts.WFO) return b.counts.WFO - a.counts.WFO;
-      if (b.counts.CLT !== a.counts.CLT) return b.counts.CLT - a.counts.CLT;
-      if (b.counts.WFH !== a.counts.WFH) return b.counts.WFH - a.counts.WFH;
-      return a.counts.PTO - b.counts.PTO;
+      const officeA = a.counts.WFO + a.counts.CLT;
+      const officeB = b.counts.WFO + b.counts.CLT;
+      if (officeB !== officeA) return officeB - officeA;
+      if (a.counts.WFH !== b.counts.WFH) return a.counts.WFH - b.counts.WFH;
+      return a.emp.fullName.localeCompare(b.emp.fullName);
     });
   }, [employees, rangeAttendance]);
 
@@ -297,13 +298,21 @@ export default function AdminDashboard() {
      setImportResult(null);
      setAttendancePreview(null);
 
-     try {
-       const preview = await previewAttendanceImport(selectedFile, selectedMonth, selectedYear);
-       setAttendancePreview(preview);
-       setImportResult({
-         message: `Preview ready: ${preview.totalAttendanceCells ?? 0} cells | New ${preview.newRecords ?? 0} | Update ${preview.updatedRecords ?? 0} | Same ${preview.sameRecords ?? 0}`,
-         type: preview.success ? 'success' : 'error',
-       });
+      try {
+        const preview = await previewAttendanceImport(selectedFile, selectedMonth, selectedYear);
+        setAttendancePreview(preview);
+        const errors = preview.errors?.length || 0;
+        if (errors > 0) {
+          setImportResult({
+            message: `Preview completed with ${errors} error(s). ${preview.errors.slice(0, 3).join(" | ")}`,
+            type: 'error',
+          });
+        } else {
+          setImportResult({
+            message: `Preview ready: ${preview.totalAttendanceCells ?? 0} cells | New ${preview.newRecords ?? 0} | Update ${preview.updatedRecords ?? 0} | Same ${preview.sameRecords ?? 0}`,
+            type: 'success',
+          });
+        }
      } catch (error) {
        setImportResult({ message: getErrorMessage(error, "Failed to preview attendance"), type: 'error' });
      } finally {
@@ -714,7 +723,7 @@ export default function AdminDashboard() {
            <DialogHeader>
              <DialogTitle>Import Attendance from Excel</DialogTitle>
              <DialogDescription>
-               Upload an Excel file with the horizontal attendance matrix format. Columns A-D must contain employee info: SL No, Employee ID, Employee Name, Project Team. From column E onward the first header row must contain dates and the second header row may contain weekdays. Attendance values are stored horizontally, and only the selected month/year columns will be processed.
+               Upload an Excel file with the horizontal attendance matrix format. Columns: A=SL No, B=Employee ID, C=Employee Name, D=Project Team, E=Email. From column F onward the first header row must contain dates and the second header row may contain weekdays (MON, TUE...). Supported status values: WFO, WFH, CLT, CL, PTO, HOL. Only the selected month/year columns will be processed.
              </DialogDescription>
            </DialogHeader>
            <div className="space-y-4">
@@ -789,7 +798,7 @@ export default function AdminDashboard() {
                   {importing ? "Importing attendance..." : "Confirm import"}
                 </Button>
               </div>
-              {attendancePreview && (
+               {attendancePreview && (
                 <div className="rounded-lg border border-border bg-muted/20 p-4 space-y-3">
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
                     <div><span className="text-muted-foreground">Month:</span> <span className="font-medium">{format(new Date(selectedYear, selectedMonth - 1), "MMMM yyyy")}</span></div>
@@ -802,6 +811,11 @@ export default function AdminDashboard() {
                     <div><span className="text-muted-foreground">Same</span> <span className="font-medium">{attendancePreview.sameRecords ?? 0}</span></div>
                     <div><span className="text-muted-foreground">Errors</span> <span className="font-medium">{attendancePreview.errors?.length ?? 0}</span></div>
                   </div>
+                  {(attendancePreview.errors?.length || 0) > 0 && (
+                    <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">
+                      {attendancePreview.errors?.slice(0, 5).join(" | ")}
+                    </div>
+                  )}
                   {(attendancePreview.previewRows?.length || 0) > 0 && (
                     <div className="overflow-auto rounded border border-border">
                       <table className="w-full text-sm">

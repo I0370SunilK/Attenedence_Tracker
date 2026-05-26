@@ -29,21 +29,28 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 @Service
 public class ExcelImportService {
 
-    private static final Set<String> ALLOWED_STATUSES = Set.of("WFO", "WFH", "CLT", "PTO", "HOL");
-    private static final int DATE_HEADER_START_COLUMN = 4; // column E in Excel
-    private static final int EMPLOYEE_ID_COLUMN = 1; // column B
-    private static final int EMPLOYEE_NAME_COLUMN = 2; // column C
-    private static final int PROJECT_TEAM_COLUMN = 3; // column D
-    private static final int FIRST_DATA_ROW_INDEX = 2; // default row 3 in Excel
+    // Allow both standard codes and common variants like CL (Casual Leave), WHO
+    private static final Set<String> ALLOWED_STATUSES = Set.of("WFO", "WFH", "CLT", "PTO", "HOL", "CL", "WHO");
+    // Column layout for the attendance Excel sheet:
+    // A(0)=SL No, B(1)=Employee ID, C(2)=Employee Name, D(3)=Project Team, E(4)=Email, F(5)+ = dates
+    private static final int DATE_HEADER_START_COLUMN = 5; // column F in Excel
+    private static final int SL_NO_COLUMN = 0;              // column A
+    private static final int EMPLOYEE_ID_COLUMN = 1;        // column B
+    private static final int EMPLOYEE_NAME_COLUMN = 2;      // column C
+    private static final int PROJECT_TEAM_COLUMN = 3;       // column D
+    private static final int EMAIL_COLUMN = 4;               // column E
     private static final int PREVIEW_LIMIT = 100;
     private static final Set<String> WEEKDAY_LABELS = Set.of(
             "MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN",
             "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"
     );
+    private static final Pattern DAY_NUMBER_PATTERN = Pattern.compile("^\\d{1,2}$");
+    private static final Pattern DAY_MONTH_PATTERN = Pattern.compile("^(\\d{1,2})\\s*(?:[-/])\\s*([a-zA-Z]{3,})$", Pattern.CASE_INSENSITIVE);
     private static final DateTimeFormatter[] DATE_FORMATTERS = new DateTimeFormatter[]{
             DateTimeFormatter.ofPattern("yyyy-MM-dd").withResolverStyle(ResolverStyle.SMART),
             DateTimeFormatter.ofPattern("dd/MM/yyyy").withResolverStyle(ResolverStyle.SMART),
@@ -124,15 +131,15 @@ public class ExcelImportService {
                 return new ParsedAttendanceSheet(List.of(), List.of(), errors);
             }
 
-            Row dateHeader = findDateHeaderRow(sheet, errors);
+            Row dateHeader = findDateHeaderRow(sheet, errors, targetMonth, targetYear);
             if (dateHeader == null) {
-                errors.add("Date header row is missing");
+                errors.add("Date header row (dates starting from column F) is missing");
                 return new ParsedAttendanceSheet(List.of(), List.of(), errors);
             }
 
-            Map<Integer, LocalDate> dateColumns = parseDateColumns(dateHeader, errors);
+            Map<Integer, LocalDate> dateColumns = parseDateColumns(dateHeader, errors, targetMonth, targetYear);
             if (dateColumns.isEmpty()) {
-                errors.add("No valid attendance date columns found starting from column E");
+                errors.add("No valid attendance date columns found starting from column F");
                 return new ParsedAttendanceSheet(List.of(), List.of(), errors);
             }
 
@@ -156,21 +163,43 @@ public class ExcelImportService {
                     continue;
                 }
 
+                // Check row for emptiness - skip if it's a blank or weekday label row
+                String slNo = clean(getCellValue(row, SL_NO_COLUMN));
                 String employeeId = clean(getCellValue(row, EMPLOYEE_ID_COLUMN));
                 String fullName = clean(getCellValue(row, EMPLOYEE_NAME_COLUMN));
                 String projectTeam = clean(getCellValue(row, PROJECT_TEAM_COLUMN));
+                String email = clean(getCellValue(row, EMAIL_COLUMN));
 
-                if (employeeId.isBlank() && fullName.isBlank() && projectTeam.isBlank()
+                // Skip rows that are entirely empty or only have weekday labels in date columns
+                if (employeeId.isBlank() && fullName.isBlank() && email.isBlank()
                         && (rowIsEmpty(row, selectedDateColumns.keySet()) || rowHasOnlyWeekdayLabels(row, selectedDateColumns.keySet()))) {
                     continue;
                 }
+
+                // Employee ID is required; if missing try matching by email
                 if (employeeId.isBlank()) {
-                    errors.add("Row " + (rowIndex + 1) + ": Employee ID is required");
-                    continue;
+                    if (!email.isBlank()) {
+                        // Search for employee by email
+                        try {
+                            List<Employee> allEmps = employeeService.getEmployees();
+                            for (Employee emp : allEmps) {
+                                if (email.equalsIgnoreCase(emp.getEmail())) {
+                                    employeeId = emp.getEmployeeId();
+                                    break;
+                                }
+                            }
+                        } catch (Exception ignored) {}
+                    }
+                    if (employeeId.isBlank()) {
+                        errors.add("Row " + (rowIndex + 1) + ": Employee ID is required (looked up by email as well)");
+                        continue;
+                    }
                 }
+
                 if (fullName.isBlank()) {
                     errors.add("Row " + (rowIndex + 1) + ": Employee Name is required");
                 }
+
                 if (seenEmployees.contains(employeeId)) {
                     errors.add("Row " + (rowIndex + 1) + ": Duplicate Employee ID '" + employeeId + "'");
                     continue;
@@ -191,7 +220,7 @@ public class ExcelImportService {
                     attendanceByDate.put(dateColumn.getValue().toString(), status);
                 }
 
-                rows.add(new AttendanceImportRow(rowIndex + 1, employeeId, fullName, projectTeam, attendanceByDate));
+                rows.add(new AttendanceImportRow(rowIndex + 1, employeeId, fullName, projectTeam, email, attendanceByDate));
             }
         } catch (IOException exception) {
             throw exception;
@@ -216,19 +245,49 @@ public class ExcelImportService {
         return workbook.getNumberOfSheets() > 0 ? workbook.getSheetAt(0) : null;
     }
 
-    private Map<Integer, LocalDate> parseDateColumns(Row dateHeader, List<String> errors) {
+    private Map<Integer, LocalDate> parseDateColumns(Row dateHeader, List<String> errors, int targetMonth, int targetYear) {
         Map<Integer, LocalDate> columns = new LinkedHashMap<>();
         Set<LocalDate> seenDates = new HashSet<>();
 
         int last = dateHeader.getLastCellNum();
         for (int colIndex = DATE_HEADER_START_COLUMN; colIndex < last; colIndex++) {
-            String raw = clean(getCellValue(dateHeader, colIndex));
-            if (raw.isBlank()) {
+            String raw = getCellRawValue(dateHeader, colIndex);
+            if (raw == null || raw.isBlank()) {
                 continue;
             }
-            LocalDate parsed = parseDate(raw);
+            String cleaned = clean(raw);
+            
+            LocalDate parsed = parseDate(cleaned);
+            
+            // If standard date parsing failed, try to interpret as a day number (1-31)
+            if (parsed == null && DAY_NUMBER_PATTERN.matcher(cleaned).matches()) {
+                int day = Integer.parseInt(cleaned);
+                if (day >= 1 && day <= 31) {
+                    try {
+                        parsed = LocalDate.of(targetYear, targetMonth, day);
+                    } catch (Exception ignored) {}
+                }
+            }
+            
+            // If still null, try pattern like "1-Jan" or "01-Jan" (without year)
             if (parsed == null) {
-                errors.add("Invalid date header at column " + (colIndex + 1) + ": '" + raw + "'");
+                java.util.regex.Matcher matcher = DAY_MONTH_PATTERN.matcher(cleaned.trim());
+                if (matcher.matches()) {
+                    try {
+                        int day = Integer.parseInt(matcher.group(1));
+                        String monthAbbr = matcher.group(2).toUpperCase(Locale.ROOT);
+                        parsed = tryParseDayMonth(day, monthAbbr, targetMonth, targetYear);
+                    } catch (Exception ignored) {
+                        // fall through
+                    }
+                }
+            }
+            
+            if (parsed == null) {
+                // Only add error if this doesn't look like a weekday row header
+                if (!WEEKDAY_LABELS.contains(cleaned.toUpperCase(Locale.ROOT))) {
+                    errors.add("Invalid date header at column " + (colIndex + 1) + ": '" + cleaned + "'");
+                }
                 continue;
             }
             if (seenDates.contains(parsed)) {
@@ -239,6 +298,31 @@ public class ExcelImportService {
             columns.put(colIndex, parsed);
         }
         return columns;
+    }
+
+    private LocalDate tryParseDayMonth(int day, String monthAbbr, int targetMonth, int targetYear) {
+        String shortTarget = YearMonth.of(targetYear, targetMonth).getMonth().getDisplayName(
+                java.time.format.TextStyle.SHORT, Locale.ENGLISH).toUpperCase(Locale.ROOT);
+        String fullTarget = YearMonth.of(targetYear, targetMonth).getMonth().getDisplayName(
+                java.time.format.TextStyle.FULL, Locale.ENGLISH).toUpperCase(Locale.ROOT);
+        
+        if (monthAbbr.equals(shortTarget) || monthAbbr.equals(fullTarget)) {
+            try {
+                return LocalDate.of(targetYear, targetMonth, day);
+            } catch (Exception ignored) {}
+        }
+        
+        for (int m = 1; m <= 12; m++) {
+            String fullName = YearMonth.of(targetYear, m).getMonth().getDisplayName(
+                    java.time.format.TextStyle.FULL, Locale.ENGLISH).toUpperCase(Locale.ROOT);
+            String shortName = fullName.substring(0, 3);
+            if (monthAbbr.equals(shortName) || monthAbbr.equals(fullName)) {
+                try {
+                    return LocalDate.of(targetYear, m, day);
+                } catch (Exception ignored) {}
+            }
+        }
+        return null;
     }
 
     private Map<Integer, LocalDate> filterMonthYearColumns(Map<Integer, LocalDate> dateColumns, int month, int year) {
@@ -261,7 +345,7 @@ public class ExcelImportService {
         return true;
     }
 
-    private Row findDateHeaderRow(Sheet sheet, List<String> errors) {
+    private Row findDateHeaderRow(Sheet sheet, List<String> errors, int targetMonth, int targetYear) {
         int firstRow = sheet.getFirstRowNum();
         int lastRow = Math.min(sheet.getLastRowNum(), firstRow + 5);
         for (int rowIndex = firstRow; rowIndex <= lastRow; rowIndex++) {
@@ -269,7 +353,7 @@ public class ExcelImportService {
             if (row == null) {
                 continue;
             }
-            Map<Integer, LocalDate> candidate = parseDateColumns(row, new ArrayList<>());
+            Map<Integer, LocalDate> candidate = parseDateColumns(row, new ArrayList<>(), targetMonth, targetYear);
             if (!candidate.isEmpty()) {
                 return row;
             }
@@ -288,8 +372,12 @@ public class ExcelImportService {
                 continue;
             }
             foundNonBlank = true;
-            if (ALLOWED_STATUSES.contains(value)) {
-                return false;
+            if (ALLOWED_STATUSES.contains(value) || WEEKDAY_LABELS.contains(value)) {
+                // It's a weekday label if it matches a known weekday name
+                if (WEEKDAY_LABELS.contains(value)) {
+                    continue;
+                }
+                return false; // it's an attendance status, not a weekday
             }
             if (!WEEKDAY_LABELS.contains(value)) {
                 return false;
@@ -314,7 +402,6 @@ public class ExcelImportService {
         int skippedCount = 0;
 
         for (AttendanceImportRow row : parsed.rows()) {
-            boolean rowExists = employeeMap.containsKey(row.employeeId());
             String employeeKey = row.employeeId();
             for (Map.Entry<String, String> cell : row.attendanceByDate().entrySet()) {
                 totalCells++;
@@ -393,9 +480,9 @@ public class ExcelImportService {
         for (AttendanceImportRow row : parsed.rows()) {
             Employee employee = employeeMap.get(row.employeeId());
             if (employee == null) {
-                String defaultEmail = row.employeeId().toLowerCase(Locale.ROOT) + "@import.local";
+                String email = row.email().isBlank() ? row.employeeId().toLowerCase(Locale.ROOT) + "@import.local" : row.email();
                 employee = employeeService.upsertImportedEmployee(
-                        defaultEmail,
+                        email,
                         row.employeeName(),
                         "Employee",
                         row.employeeId(),
@@ -422,11 +509,17 @@ public class ExcelImportService {
                     continue;
                 }
 
+                // Normalize CL to CLT for storage if needed
+                String statusToStore = excelValue;
+                if ("CL".equalsIgnoreCase(excelValue)) {
+                    statusToStore = "CLT";
+                }
+
                 AttendanceRecord record = new AttendanceRecord();
                 record.setId(employee.getId() + ":" + date);
                 record.setEmployeeId(employee.getId());
                 record.setDate(date);
-                record.setStatus(excelValue);
+                record.setStatus(statusToStore);
                 record.setMarkedAt(Instant.now().toString());
                 record.setEdited(false);
                 upsertRecords.add(record);
@@ -458,19 +551,48 @@ public class ExcelImportService {
         return value == null ? "" : value.trim();
     }
 
-    private String getCellValue(Row row, int columnIndex) {
+    /**
+     * Get cell value as string, handling numeric Excel dates correctly.
+     * This method handles the case where Excel returns "#####" for narrow columns
+     * by reading the underlying numeric value.
+     */
+    private String getCellRawValue(Row row, int columnIndex) {
         if (row == null) {
-            return "";
+            return null;
         }
         Cell cell = row.getCell(columnIndex, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
         if (cell == null) {
-            return "";
+            return null;
         }
+        // Handle date-formatted cells directly
         if (cell.getCellType() == CellType.NUMERIC && DateUtil.isCellDateFormatted(cell)) {
-            return cell.getLocalDateTimeCellValue().toLocalDate().toString();
+            try {
+                return cell.getLocalDateTimeCellValue().toLocalDate().toString(); // returns yyyy-MM-dd
+            } catch (Exception ignored) {}
         }
+        // Use DataFormatter to get the formatted value (handles "#####" by reading underlying value)
         DataFormatter formatter = new DataFormatter();
-        return formatter.formatCellValue(cell);
+        String formatted = formatter.formatCellValue(cell);
+        // If the result is "#####" (Excel's overflow indicator), try reading the numeric value directly
+        if (formatted != null && formatted.replace("#", "").isEmpty()) {
+            if (cell.getCellType() == CellType.NUMERIC) {
+                double numericValue = cell.getNumericCellValue();
+                // Check if it might be an Excel date serial number
+                if (numericValue > 1) {
+                    try {
+                        LocalDate date = LocalDate.of(1900, 1, 1).plusDays((long) numericValue - 2);
+                        return date.toString();
+                    } catch (Exception ignored) {}
+                }
+                return String.valueOf((long) numericValue);
+            }
+        }
+        return formatted;
+    }
+
+    private String getCellValue(Row row, int columnIndex) {
+        String raw = getCellRawValue(row, columnIndex);
+        return raw == null ? "" : raw.trim();
     }
 
     private LocalDate parseDate(String dateStr) {
@@ -478,9 +600,11 @@ public class ExcelImportService {
             return null;
         }
         String normalized = dateStr.trim();
+        // Try yyyy-MM-dd first (direct match)
         if (normalized.matches("\\d{4}-\\d{2}-\\d{2}")) {
             return LocalDate.parse(normalized);
         }
+        // Try all registered formatters
         for (DateTimeFormatter formatter : DATE_FORMATTERS) {
             try {
                 LocalDate parsed = LocalDate.parse(normalized, formatter);
@@ -515,6 +639,7 @@ public class ExcelImportService {
             String employeeId,
             String employeeName,
             String projectTeam,
+            String email,
             Map<String, String> attendanceByDate
     ) {}
 }
