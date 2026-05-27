@@ -32,18 +32,29 @@ export function workingDaysInMonth(ref = new Date()) {
 }
 
 export function notMarkedThisMonth(records: AttendanceRecord[], ref = new Date()) {
+  return notMarkedDatesThisMonth(records, ref).length;
+}
+
+/** Returns array of date strings (YYYY-MM-DD) that are days without attendance */
+export function notMarkedDatesThisMonth(records: AttendanceRecord[], ref = new Date(), includeWeekends = false) {
   const monthRecs = records.filter(r => isSameMonth(r.date, ref));
-  const today = new Date();
-  const lastDay = ref.getMonth() === today.getMonth() ? today.getDate() : new Date(ref.getFullYear(), ref.getMonth() + 1, 0).getDate();
-  let count = 0;
+  const now = new Date();
+  const lastDay = ref.getMonth() === now.getMonth() && ref.getFullYear() === now.getFullYear()
+    ? now.getDate()
+    : new Date(ref.getFullYear(), ref.getMonth() + 1, 0).getDate();
+  const result: string[] = [];
   for (let d = 1; d <= lastDay; d++) {
     const dt = new Date(ref.getFullYear(), ref.getMonth(), d);
     const dow = dt.getDay();
-    if (dow === 0 || dow === 6) continue;
-    const key = dt.toISOString().slice(0, 10);
-    if (!monthRecs.find(r => r.date === key)) count++;
+    if (!includeWeekends && (dow === 0 || dow === 6)) continue;
+    // Use local date string to avoid UTC offset issues
+    const y = dt.getFullYear();
+    const m = String(dt.getMonth() + 1).padStart(2, "0");
+    const day = String(dt.getDate()).padStart(2, "0");
+    const key = `${y}-${m}-${day}`;
+    if (!monthRecs.find(r => r.date === key)) result.push(key);
   }
-  return count;
+  return result;
 }
 
 export function leaderboardScore(c: Record<AttendanceStatus, number>) {

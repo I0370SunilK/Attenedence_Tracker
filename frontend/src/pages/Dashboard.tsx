@@ -1,30 +1,36 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { AttendanceRecord, AttendanceStatus, STATUS_BADGE } from "@/lib/types";
-import { attendanceStreak, countByStatus, dateKey, greeting, isSameMonth, notMarkedThisMonth, weeklyCounts } from "@/lib/attendance";
+import { attendanceStreak, countByStatus, dateKey, greeting, isSameMonth, notMarkedThisMonth, notMarkedDatesThisMonth, weeklyCounts } from "@/lib/attendance";
 import { markAttendance } from "@/lib/api";
 import { emitAttendanceChanged } from "@/lib/attendanceEvents";
-import { useEmployeeAttendance } from "@/lib/queries";
+import { useEmployeeAttendance, queryKeys } from "@/lib/queries";
+import { useQueryClient } from "@tanstack/react-query";
 import StatCard from "@/components/StatCard";
 import ClickableStatCard from "@/components/ClickableStatCard";
 import AttendanceDetailsModal from "@/components/AttendanceDetailsModal";
 import { Button } from "@/components/ui/button";
-import { Building, Home, Briefcase, Plane, MinusCircle, CalendarPlus, Clock } from "lucide-react";
+import { Building, Home, Briefcase, Plane, MinusCircle, CalendarPlus, Clock, Calendar, CalendarX2 } from "lucide-react";
 import MarkAttendanceDialog from "@/components/MarkAttendanceDialog";
 import AttendanceCalendar from "@/components/AttendanceCalendar";
 import WeeklySummary from "@/components/WeeklySummary";
 import StreakBadges from "@/components/StreakBadges";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [notMarkedDialogOpen, setNotMarkedDialogOpen] = useState(false);
+  const [notMarkedShowWeekends, setNotMarkedShowWeekends] = useState(false);
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [now, setNow] = useState(new Date());
 
-  const { data: records = [] } = useEmployeeAttendance(user?.id);
+  const { data: rawRecords = [] } = useEmployeeAttendance(user?.id);
+  const records = rawRecords as AttendanceRecord[];
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);
@@ -33,6 +39,7 @@ export default function Dashboard() {
 
   const monthly = useMemo(() => countByStatus(records.filter(r => isSameMonth(r.date))), [records]);
   const notMarked = useMemo(() => notMarkedThisMonth(records), [records]);
+  const notMarkedDatesList = useMemo(() => notMarkedDatesThisMonth(records), [records]);
   const week = useMemo(() => weeklyCounts(records), [records]);
   const streak = useMemo(() => attendanceStreak(records), [records]);
 
@@ -42,12 +49,13 @@ export default function Dashboard() {
   const upsert = async (date: string, s: AttendanceStatus) => {
     if (!user) return;
     try {
-      const saved = await markAttendance(user.id, {
+      await markAttendance(user.id, {
         date,
         status: s,
         markedAt: new Date().toISOString(),
       });
-      setRecords(saved);
+      // Invalidate the attendance query so React Query refetches
+      queryClient.invalidateQueries({ queryKey: queryKeys.employeeAttendance(user.id) });
       emitAttendanceChanged();
       return true;
     } catch (error) {
@@ -69,8 +77,12 @@ export default function Dashboard() {
   };
 
   const handleCardClick = (type: string) => {
-    setSelectedType(type);
-    setDetailsOpen(true);
+    if (type === "NOT_MARKED") {
+      setNotMarkedDialogOpen(true);
+    } else {
+      setSelectedType(type);
+      setDetailsOpen(true);
+    }
   };
 
   return (
@@ -151,11 +163,12 @@ export default function Dashboard() {
             accent="warning"
             onClick={() => handleCardClick("PTO")}
           />
-          <StatCard
+          <ClickableStatCard
             label="Not Marked"
             value={notMarked}
             icon={MinusCircle}
             accent="muted"
+            onClick={() => handleCardClick("NOT_MARKED")}
           />
         </div>
       </section>
@@ -188,6 +201,62 @@ export default function Dashboard() {
           records={records}
         />
       )}
+
+      {/* Not Marked Dialog - shows which working days have no attendance */}
+      <Dialog open={notMarkedDialogOpen} onOpenChange={setNotMarkedDialogOpen}>
+        <DialogContent className="sm:max-w-md max-h-[80vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="text-lg">Not Marked Days</DialogTitle>
+            <DialogDescription>
+              Working days in {format(now, "MMMM yyyy")} where attendance hasn't been marked
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto">
+            {notMarkedDatesList.length === 0 ? (
+              <div className="text-center py-12">
+                <Calendar className="h-8 w-8 text-muted-foreground/50 mx-auto mb-3" />
+                <p className="text-sm text-muted-foreground">All working days marked! 🎉</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {notMarkedDatesList.map((dateStr) => {
+                  const date = new Date(dateStr + "T00:00:00");
+                  return (
+                    <div
+                      key={dateStr}
+                      className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/20 hover:bg-muted/40 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <CalendarX2 className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                        <div>
+                          <p className="text-sm font-medium">
+                            {format(date, "EEEE")}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {format(date, "MMM dd, yyyy")}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-xs font-medium text-destructive bg-destructive/10 px-2.5 py-1 rounded-full">
+                        Not marked
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {notMarkedDatesList.length > 0 && (
+            <div className="border-t pt-4 mt-4">
+              <p className="text-xs text-muted-foreground text-center">
+                Total: <span className="font-semibold">{notMarkedDatesList.length}</span> unmarked working days
+              </p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
