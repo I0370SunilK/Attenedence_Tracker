@@ -61,16 +61,16 @@ export default function DateRangePicker({ value, onChange }: Props) {
   };
 
   return (
-    <div className="grid w-full grid-cols-2 gap-1 bg-card border border-border rounded-xl p-1 shadow-sm sm:inline-flex sm:w-auto sm:grid-cols-none">
+    <div className="grid w-full grid-cols-2 gap-1.5 bg-card border border-border rounded-xl p-1.5 shadow-sm sm:inline-flex sm:w-auto sm:grid-cols-none">
       {PRESETS.map((p) => (
         <button
           key={p.id}
           onClick={() => onChange(p.build())}
           className={cn(
-            "min-w-0 px-2 sm:px-3 py-1.5 text-xs font-medium rounded-lg transition-colors",
+            "min-w-0 px-2 sm:px-3 py-1.5 text-xs font-medium rounded-lg transition-colors border",
             value.preset === p.id
-              ? "bg-primary text-primary-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground hover:bg-muted"
+              ? "bg-primary text-primary-foreground border-primary shadow-sm"
+              : "text-muted-foreground border-border/60 hover:text-foreground hover:bg-muted hover:border-border"
           )}
         >
           {p.label}
@@ -81,10 +81,10 @@ export default function DateRangePicker({ value, onChange }: Props) {
         <PopoverTrigger asChild>
           <button
             className={cn(
-              "col-span-2 flex min-w-0 items-center justify-center gap-1.5 px-2 sm:px-3 py-1.5 text-xs font-medium rounded-lg transition-colors sm:col-span-1",
+              "col-span-2 flex min-w-0 items-center justify-center gap-1.5 px-2 sm:px-3 py-1.5 text-xs font-medium rounded-lg transition-colors border sm:col-span-1",
               value.preset === "custom"
-                ? "bg-primary text-primary-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                : "text-muted-foreground border-border/60 hover:text-foreground hover:bg-muted hover:border-border"
             )}
           >
             <CalendarIcon className="h-3.5 w-3.5" />

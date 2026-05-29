@@ -383,7 +383,7 @@ export default function AdminDashboard() {
            <p className="text-sm text-muted-foreground mt-1">{format(today, "EEEE, d MMMM yyyy")}</p>
            <div className="mt-2"><RangeContext value={range} /></div>
          </div>
-         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
+        <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:flex-row sm:items-center">
            <DateRangePicker value={range} onChange={setRange} />
            <Button onClick={() => setReportOpen(true)} className="w-full sm:w-auto">
              <FileText className="h-4 w-4 mr-2" /> Full Report
@@ -538,7 +538,7 @@ export default function AdminDashboard() {
           </div>
         </div>
         <div className="p-3 sm:p-6">
-          <div className="grid md:grid-cols-2 gap-3 sm:gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-6">
             <InsightCard title="Top 5 — WFO + CLT" subtitle="Most office presence in range"
               items={top5OfficeClient.map(r => ({ emp: r.emp, value: `${r.counts.WFO + r.counts.CLT} days` }))} />
             <InsightCard title="≥ 12 office days" subtitle="Consistent in-office collaborators"

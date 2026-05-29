@@ -168,7 +168,7 @@ export default function Monitor() {
           <p className="text-sm text-muted-foreground">No employees match your search.</p>
         </Card>
       ) : (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {list.map(e => {
             const c = countByStatus(monthAttendance[e.id] || []);
             return (
@@ -313,7 +313,7 @@ function EmployeeDetail({ emp, monthAttendance, onBack }: { emp: Employee; month
       <Card className="card-soft overflow-hidden">
         <div className="h-24 bg-gradient-primary" />
         <div className="px-4 sm:px-8 pb-5 sm:pb-6 -mt-10">
-          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 sm:gap-4">
             <div className="flex items-end gap-3 sm:gap-4 min-w-0">
               <div className="h-16 w-16 sm:h-20 sm:w-20 shrink-0 rounded-2xl border-4 border-card grid place-items-center text-lg sm:text-xl font-bold text-white shadow-elevated"
                 style={{ background: emp.avatarColor }}>
@@ -321,7 +321,7 @@ function EmployeeDetail({ emp, monthAttendance, onBack }: { emp: Employee; month
               </div>
               <div className="min-w-0 pb-1">
                 <h2 className="truncate text-lg sm:text-xl font-bold">{emp.fullName}</h2>
-                <p className="truncate text-sm text-muted-foreground">{emp.employeeId} · {emp.designation} · {emp.team}</p>
+                <p className="mt-2.5 text-xs sm:text-sm text-muted-foreground break-words">{emp.employeeId} · {emp.designation} · {emp.team}</p>
               </div>
             </div>
             <div className="flex gap-2">
@@ -330,9 +330,9 @@ function EmployeeDetail({ emp, monthAttendance, onBack }: { emp: Employee; month
               </Button>
             </div>
           </div>
-          <div className="grid sm:grid-cols-2 gap-3 mt-5 sm:mt-6 text-sm">
-            <div className="flex min-w-0 items-center gap-2 text-muted-foreground"><Mail className="h-4 w-4 shrink-0" /> <span className="truncate">{emp.email}</span></div>
-            <div className="flex min-w-0 items-center gap-2 text-muted-foreground"><MapPin className="h-4 w-4 shrink-0" /> <span className="truncate">{emp.city}, {emp.state}</span></div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4 text-sm">
+            <div className="flex min-w-0 items-center gap-2 text-muted-foreground"><Mail className="h-4 w-4 shrink-0" /> <span className="break-words">{emp.email}</span></div>
+            <div className="flex min-w-0 items-center gap-2 text-muted-foreground"><MapPin className="h-4 w-4 shrink-0" /> <span className="break-words">{emp.city}, {emp.state}</span></div>
           </div>
         </div>
       </Card>

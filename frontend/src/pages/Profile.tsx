@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { changePassword, sendDeletionRequest, getDeletionRequestStatus, updateProfile } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,7 @@ import {
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
-import { LogOut, Trash2, Mail, MapPin, Briefcase, Users, IdCard, Camera, KeyRound, Pencil, Save, X, type LucideIcon } from "lucide-react";
+import { LogOut, Trash2, Mail, MapPin, Briefcase, Users, IdCard, KeyRound, Pencil, Save, X, type LucideIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { DESIGNATIONS, Employee } from "@/lib/types";
@@ -22,8 +22,6 @@ export default function Profile() {
   const nav = useNavigate();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<Employee | null>(user);
-  const [avatar, setAvatar] = useState<string | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
   const [saving, setSaving] = useState(false);
 
   // password
@@ -44,13 +42,6 @@ export default function Profile() {
   if (!user || !draft) return null;
 
   const initials = draft.fullName.split(" ").map(n => n[0]).slice(0, 2).join("");
-
-  const handleAvatar = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0]; if (!f) return;
-    const url = URL.createObjectURL(f);
-    setAvatar(url);
-    toast.success("Avatar updated");
-  };
 
   const save = async () => {
     if (!draft) return;
@@ -112,31 +103,24 @@ export default function Profile() {
   };
 
   return (
-    <div className="space-y-8 max-w-4xl">
+    <div className="space-y-8 max-w-4xl w-full">
       <div className="card-soft overflow-hidden">
         <div className="h-28 bg-gradient-primary" />
-        <div className="px-6 sm:px-8 pb-8 -mt-12">
+        <div className="px-4 sm:px-8 pb-8 -mt-12">
           <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-            <div className="flex items-end gap-4">
-              <div className="relative">
-                <div className="h-24 w-24 rounded-2xl border-4 border-card grid place-items-center text-2xl font-bold text-white shadow-elevated overflow-hidden"
-                  style={{ background: avatar ? undefined : draft.avatarColor }}>
-                  {avatar ? <img src={avatar} alt="" className="h-full w-full object-cover" /> : initials}
+            <div className="flex items-end gap-4 min-w-0">
+              <div className="shrink-0">
+                <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-2xl border-4 border-card grid place-items-center text-xl sm:text-2xl font-bold text-white shadow-elevated overflow-hidden"
+                  style={{ background: draft.avatarColor }}>
+                  {initials}
                 </div>
-                <button
-                  onClick={() => fileRef.current?.click()}
-                  className="absolute -bottom-1 -right-1 h-8 w-8 rounded-full bg-card border border-border shadow grid place-items-center hover:bg-muted transition-colors"
-                  aria-label="Change avatar">
-                  <Camera className="h-4 w-4" />
-                </button>
-                <input ref={fileRef} type="file" accept="image/*" hidden onChange={handleAvatar} />
               </div>
-              <div className="pb-2">
-                <h1 className="text-2xl font-bold">{draft.fullName}</h1>
-                <p className="text-sm text-muted-foreground">{draft.designation} · {draft.team}</p>
+              <div className="pb-2 min-w-0 flex-1">
+                <h1 className="text-xl sm:text-2xl font-bold break-words">{draft.fullName}</h1>
+                <p className="text-sm text-muted-foreground break-words">{draft.designation} · {draft.team}</p>
               </div>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 w-full sm:w-auto">
               {!editing ? (
                 <>
                   <Button variant="outline" onClick={() => setEditing(true)}>
@@ -208,7 +192,7 @@ export default function Profile() {
         </div>
       </div>
 
-      <div className="grid sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         <Detail icon={IdCard} label="Employee ID" value={draft.employeeId} editing={false} onChange={() => {}} />
         <Detail icon={Briefcase} label="Designation" value={draft.designation}
           editing={editing} onChange={v => setDraft({ ...draft, designation: v as Employee["designation"] })} selectOptions={DESIGNATIONS} />
@@ -236,7 +220,7 @@ function Detail({
   icon: Icon, label, value, editing, onChange, selectOptions,
 }: { icon: LucideIcon; label: string; value: string; editing: boolean; onChange: (v: string) => void; selectOptions?: string[] }) {
   return (
-    <div className="card-soft p-5 flex items-center gap-4">
+    <div className="card-soft p-4 sm:p-5 flex items-center gap-3 sm:gap-4">
       <div className="h-10 w-10 rounded-xl bg-primary-soft text-primary grid place-items-center shrink-0">
         <Icon className="h-5 w-5" />
       </div>
@@ -260,7 +244,7 @@ function Detail({
             <Input value={value} onChange={e => onChange(e.target.value)} className="h-8 mt-1 text-sm" />
           )
         ) : (
-          <p className="font-medium truncate">{value}</p>
+          <p className="font-medium break-words">{value}</p>
         )}
       </div>
     </div>
