@@ -104,82 +104,111 @@ export default function Profile() {
 
   return (
     <div className="space-y-8 max-w-4xl w-full">
-      <div className="card-soft overflow-hidden">
-        <div className="h-28 bg-gradient-primary" />
-        <div className="px-4 sm:px-8 pb-8 -mt-12">
-          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-            <div className="flex items-end gap-4 min-w-0">
+      <div className="card-soft overflow-hidden relative">
+        <div className="h-32 bg-gradient-primary" />
+        <div className="absolute right-4 top-4 flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            title="Edit profile"
+            onClick={() => setEditing(true)}
+            className="rounded-full bg-white/10 text-white shadow-lg shadow-black/10 border border-white/10 hover:bg-white/20 transition"
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+
+          <Dialog open={pwOpen} onOpenChange={setPwOpen}>
+            <DialogTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                title="Change password"
+                className="rounded-full bg-white/10 text-white shadow-lg shadow-black/10 border border-white/10 hover:bg-white/20 transition"
+              >
+                <KeyRound className="h-4 w-4" />
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Change password</DialogTitle>
+                <DialogDescription>Use at least 8 characters.</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-3">
+                <Field label="Current password" type="password" value={pw.current} onChange={v => setPw({ ...pw, current: v })} />
+                <Field label="New password" type="password" value={pw.next} onChange={v => setPw({ ...pw, next: v })} />
+                <Field label="Confirm new password" type="password" value={pw.confirm} onChange={v => setPw({ ...pw, confirm: v })} />
+              </div>
+              <DialogFooter>
+                <Button variant="ghost" onClick={() => setPwOpen(false)} disabled={pwBusy}>Cancel</Button>
+                <Button onClick={changePw} disabled={pwBusy}>Update</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                title="Delete account"
+                aria-label="Delete account"
+                disabled={deleteRequestBusy || deleteRequestStatus === "pending" || deleteRequestStatus === "approved"}
+                className="rounded-full bg-destructive text-white shadow-lg shadow-black/10 border border-white/10 hover:bg-destructive/90 transition"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Request account deletion?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Deletion isn't immediate. A request will be sent to your admin for approval.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDeleteRequest}>
+                  Send Request
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            title="Logout"
+            onClick={() => {
+              logout();
+              toast.success("Signed out");
+              nav("/login");
+            }}
+            className="rounded-full bg-white/10 text-white shadow-lg shadow-black/10 border border-white/10 hover:bg-white/20 transition"
+          >
+            <LogOut className="h-4 w-4" />
+          </Button>
+        </div>
+        <div className="px-4 sm:px-8 pb-8 -mt-16">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+            <div className="flex items-start gap-4 min-w-0">
               <div className="shrink-0">
-                <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-2xl border-4 border-card grid place-items-center text-xl sm:text-2xl font-bold text-white shadow-elevated overflow-hidden"
+                <div className="h-16 w-16 sm:h-24 sm:w-24 rounded-2xl border-4 border-card grid place-items-center text-lg sm:text-2xl font-bold text-white shadow-elevated overflow-hidden"
                   style={{ background: draft.avatarColor }}>
                   {initials}
                 </div>
               </div>
-              <div className="pb-2 min-w-0 flex-1">
-                <h1 className="text-xl sm:text-2xl font-bold break-words">{draft.fullName}</h1>
-                <p className="text-sm text-muted-foreground break-words">{draft.designation} · {draft.team}</p>
+              <div className="min-w-0 flex-1 pt-3 pr-20 sm:pr-16">
+                <h1 className="text-[clamp(1.06rem,4vw,1.35rem)] sm:text-[clamp(1.90rem,3.5vw,1.25rem)] md:text-[clamp(1.05rem,3vw,1.8rem)] lg:text-[clamp(1.15rem,2.5vw,2.05rem)] font-bold leading-tight text-white whitespace-nowrap max-w-full">{draft.fullName}</h1>
               </div>
             </div>
             <div className="flex flex-wrap gap-2 w-full sm:w-auto">
               {!editing ? (
                 <>
-                  <Button variant="outline" onClick={() => setEditing(true)}>
-                    <Pencil className="h-4 w-4 mr-2" /> Edit Profile
-                  </Button>
-                  <Dialog open={pwOpen} onOpenChange={setPwOpen}>
-                    <DialogTrigger asChild>
-                      <Button variant="outline"><KeyRound className="h-4 w-4 mr-2" /> Change Password</Button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-md">
-                      <DialogHeader>
-                        <DialogTitle>Change password</DialogTitle>
-                        <DialogDescription>Use at least 8 characters.</DialogDescription>
-                      </DialogHeader>
-                      <div className="space-y-3">
-                        <Field label="Current password" type="password" value={pw.current} onChange={v => setPw({ ...pw, current: v })} />
-                        <Field label="New password" type="password" value={pw.next} onChange={v => setPw({ ...pw, next: v })} />
-                        <Field label="Confirm new password" type="password" value={pw.confirm} onChange={v => setPw({ ...pw, confirm: v })} />
-                      </div>
-                      <DialogFooter>
-                        <Button variant="ghost" onClick={() => setPwOpen(false)} disabled={pwBusy}>Cancel</Button>
-                        <Button onClick={changePw} disabled={pwBusy}>Update</Button>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
-                  <Button variant="ghost" onClick={() => { logout(); toast.success("Signed out"); nav("/login"); }}>
-                    <LogOut className="h-4 w-4 mr-2" /> Logout
-                  </Button>
                   {deleteRequestStatus === "pending" && (
                     <div className="rounded-xl border border-warning/40 bg-warning/5 px-3 py-2 text-sm text-warning-foreground">
                       Your deletion request is pending admin approval.
                     </div>
                   )}
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        variant="destructive"
-                        size="icon"
-                        aria-label="Delete account"
-                        disabled={deleteRequestBusy || deleteRequestStatus === "pending" || deleteRequestStatus === "approved"}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Request account deletion?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Deletion isn't immediate. A request will be sent to your admin for approval.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDeleteRequest}>
-                          Send Request
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
                 </>
               ) : (
                 <>
@@ -192,7 +221,7 @@ export default function Profile() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Detail icon={IdCard} label="Employee ID" value={draft.employeeId} editing={false} onChange={() => {}} />
         <Detail icon={Briefcase} label="Designation" value={draft.designation}
           editing={editing} onChange={v => setDraft({ ...draft, designation: v as Employee["designation"] })} selectOptions={DESIGNATIONS} />
@@ -217,36 +246,54 @@ function Field({ label, value, onChange, type = "text" }: { label: string; value
 }
 
 function Detail({
-  icon: Icon, label, value, editing, onChange, selectOptions,
-}: { icon: LucideIcon; label: string; value: string; editing: boolean; onChange: (v: string) => void; selectOptions?: string[] }) {
+  icon: Icon,
+  label,
+  value,
+  editing,
+  onChange,
+  selectOptions,
+}: {
+  icon: LucideIcon;
+  label: string;
+  value: string;
+  editing: boolean;
+  onChange: (v: string) => void;
+  selectOptions?: string[];
+}) {
   return (
-    <div className="card-soft p-4 sm:p-5 flex items-center gap-3 sm:gap-4">
-      <div className="h-10 w-10 rounded-xl bg-primary-soft text-primary grid place-items-center shrink-0">
-        <Icon className="h-5 w-5" />
+<div className="card-soft overflow-hidden p-3 sm:p-4">
+      <div className="flex items-start gap-3 mb-3">
+        <div className="rounded-2xl border border-card p-2 text-primary">
+          <Icon className="h-4 w-4" />
+        </div>
+        <div>
+          <p className="text-sm text-muted-foreground">{label}</p>
+          <p className="mt-1 font-semibold text-foreground">{value}</p>
+        </div>
       </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">{label}</p>
-        {editing ? (
-          selectOptions ? (
-            <Select value={value} onValueChange={onChange}>
-              <SelectTrigger className="h-8 mt-1 text-sm">
-                <SelectValue placeholder={`Select ${label.toLowerCase()}`} />
-              </SelectTrigger>
-              <SelectContent>
-                {selectOptions.map((option) => (
-                  <SelectItem key={option} value={option}>
-                    {option}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : (
-            <Input value={value} onChange={e => onChange(e.target.value)} className="h-8 mt-1 text-sm" />
-          )
+
+      {editing ? (
+        selectOptions ? (
+          <Select value={value} onValueChange={onChange}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder={`Select ${label.toLowerCase()}`} />
+            </SelectTrigger>
+            <SelectContent>
+              {selectOptions.map(option => (
+                <SelectItem key={option} value={option}>
+                  {option}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         ) : (
-          <p className="font-medium break-words">{value}</p>
-        )}
-      </div>
+          <Input
+            value={value}
+            onChange={e => onChange(e.target.value)}
+            className="w-full"
+          />
+        )
+      ) : null}
     </div>
   );
 }

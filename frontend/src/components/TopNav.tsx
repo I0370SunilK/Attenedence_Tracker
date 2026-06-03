@@ -58,16 +58,6 @@ export default function TopNav() {
             }>
             Timesheets
           </NavLink>
-          {role === "admin" && (
-            <NavLink to="/admin"
-              className={({ isActive }) =>
-                `px-4 py-1.5 text-sm font-medium rounded-full transition-colors ${
-                  isActive ? "bg-card shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
-                }`
-              }>
-              Admin
-            </NavLink>
-          )}
         </nav>
 
         <div className="flex items-center gap-1">

@@ -94,8 +94,8 @@ export default function Dashboard() {
         <div className="relative flex flex-col md:flex-row md:items-end md:justify-between gap-6">
           <div className="min-w-0 flex-1">
             <p className="text-sm text-primary-foreground/80 font-medium">{greeting(now)}</p>
-            <h1 className="mt-1 max-w-full text-[clamp(1.65rem,3.4vw,2.85rem)] font-bold leading-tight text-balance break-words">
-              Hi, {user?.fullName} 👋
+            <h1 className="mt-1 max-w-[min(100%,46rem)] text-[clamp(1.75rem,2.2vw,2.45rem)] font-bold leading-tight text-white">
+              Hi, <span className="inline-block">{user?.fullName} 👋</span>
             </h1>
             <p className="text-primary-foreground/85 text-sm mt-2">
               {format(now, "EEEE · d MMMM yyyy")}

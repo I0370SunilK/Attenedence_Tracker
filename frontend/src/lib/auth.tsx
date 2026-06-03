@@ -36,12 +36,16 @@ function saveSession(role: Role, user: Employee) {
  * Derive role from the employee document.
  * Uses the role field from MongoDB first, falls back to employeeId check for backward compatibility.
  */
-function deriveRole(user: Employee): Role {
-  // If role is explicitly set in MongoDB, use it
+function deriveRole(user: Employee, fallback?: Role): Role {
+  // If role is explicitly set in MongoDB, use it.
   if (user.role === "admin" || user.role === "user") {
     return user.role as Role;
   }
-  // Fallback: derive from employeeId prefix (backward compatibility)
+  // Preserve the previously stored session role when possible.
+  if (fallback) {
+    return fallback;
+  }
+  // Fallback: derive from employeeId prefix for backward compatibility.
   return user.employeeId.toLowerCase().startsWith("admin") ? "admin" : "user";
 }
 
@@ -55,7 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     fetchCurrentUser()
       .then((current) => {
         if (current) {
-          const derivedRole = deriveRole(current);
+          const derivedRole = deriveRole(current, initialSession?.role);
           setUser(current);
           setRoleState(derivedRole);
           saveSession(derivedRole, current);

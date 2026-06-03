@@ -40,10 +40,9 @@ export default function Login() {
       } else {
         void prefetchEmployees(queryClient);
       }
-      toast.success(
-        `Welcome back${auth.role === "admin" ? ", Admin" : ""}`
-      );
-      nav(auth.role === "admin" ? "/admin" : "/dashboard");
+      toast.success("Welcome back");
+      // Always redirect to dashboard - admins can access admin dashboard from profile dropdown
+      nav("/dashboard");
     } catch (error) {
       toast.error(
         error instanceof Error
