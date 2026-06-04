@@ -34,7 +34,7 @@ const App = () => (
     <ErrorBoundary>
       <TooltipProvider>
         <Toaster />
-        <Sonner position="top-right" richColors />
+        <Sonner position="top-right" richColors duration={2000} />
         <BrowserRouter>
           <AuthProvider>
             <Routes>

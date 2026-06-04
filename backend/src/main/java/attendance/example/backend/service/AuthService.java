@@ -364,7 +364,8 @@ public class AuthService {
         cookie.setHttpOnly(true);
         cookie.setSecure(sessionCookieSecure);
         cookie.setPath("/");
-        cookie.setMaxAge(60 * 60 * 24 * 7);
+        // Use a session cookie so closing the browser/tab ends the login session.
+        // Do not set max age here.
 
         response.addCookie(cookie);
     }
