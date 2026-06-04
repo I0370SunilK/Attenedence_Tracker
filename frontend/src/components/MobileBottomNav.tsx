@@ -38,7 +38,7 @@ export default function MobileBottomNav() {
     logout();
     toast.success("Signed out");
     setLogoutOpen(false);
-    window.location.href = "/login";
+    window.location.replace("/login");
   };
 
   return (

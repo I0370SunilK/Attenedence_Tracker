@@ -19,7 +19,7 @@ export default function TopNav() {
     logout();
     toast.success("Signed out");
     setLogoutOpen(false);
-    nav("/login");
+    nav("/login", { replace: true });
   };
 
   return (

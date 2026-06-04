@@ -21,7 +21,7 @@ export default function AdminShell({ children }: { children: ReactNode }) {
     logout();
     toast.success("Signed out");
     setLogoutOpen(false);
-    nav("/login");
+    nav("/login", { replace: true });
   };
 
   const mobileNavItems = [

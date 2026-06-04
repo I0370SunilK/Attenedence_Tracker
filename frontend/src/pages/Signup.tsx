@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -49,7 +49,7 @@ const EMAIL_PATTERN = /^[a-zA-Z0-9._%+-]+@srmtech\.com$/;
 
 export default function Signup() {
   const nav = useNavigate();
-  const { login } = useAuth();
+  const { login, user, isReady } = useAuth();
   const [form, setForm] = useState({
     fullName: "", empId: "", designation: "", team: "",
     email: "",
@@ -120,6 +120,12 @@ export default function Signup() {
     return Object.keys(newErrors).length === 0;
   };
 
+  useEffect(() => {
+    if (isReady && user) {
+      nav("/dashboard", { replace: true });
+    }
+  }, [isReady, user, nav]);
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -143,7 +149,7 @@ export default function Signup() {
       });
       login(auth);
       toast.success("Account created successfully!");
-      nav("/dashboard");
+      nav("/dashboard", { replace: true });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Unable to create account");
     } finally {

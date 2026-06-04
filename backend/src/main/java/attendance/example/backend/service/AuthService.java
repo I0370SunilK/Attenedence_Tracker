@@ -70,7 +70,6 @@ public class AuthService {
         );
 
         writeSessionCookie(response, employee.getId());
-
         return new AuthResponse(employee, employee.getRole());
     }
 

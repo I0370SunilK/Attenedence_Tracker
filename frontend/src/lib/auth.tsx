@@ -32,6 +32,41 @@ function saveSession(role: Role, user: Employee) {
   localStorage.setItem(SESSION_KEY, JSON.stringify({ role, user }));
 }
 
+function clearAuthStorage() {
+  try {
+    localStorage.removeItem(SESSION_KEY);
+  } catch {
+    // Best-effort only.
+  }
+
+  try {
+    if (typeof window !== "undefined") {
+      sessionStorage.clear();
+    }
+  } catch {
+    // Best-effort only.
+  }
+}
+
+function clearAllCookies() {
+  if (typeof document === "undefined") {
+    return;
+  }
+
+  try {
+    const cookies = document.cookie.split(";");
+    for (const cookie of cookies) {
+      const [name] = cookie.split("=");
+      if (!name) continue;
+      const trimmed = name.trim();
+      document.cookie = `${trimmed}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;`;
+      document.cookie = `${trimmed}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/;domain=${window.location.hostname};`;
+    }
+  } catch {
+    // Best-effort only.
+  }
+}
+
 /**
  * Derive role from the employee document.
  * Uses the role field from MongoDB first, falls back to employeeId check for backward compatibility.
@@ -91,7 +126,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = () => {
     setUser(null);
-    localStorage.removeItem(SESSION_KEY);
+    setRoleState("user");
+    setIsReady(true);
+    clearAuthStorage();
+    clearAllCookies();
     void logoutUser().catch(() => {
       // If the backend is unavailable we still clear local session state.
     });

@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,7 @@ import ForgotPasswordDialog from "@/components/ForgotPasswordDialog";
 
 export default function Login() {
   const nav = useNavigate();
-  const { login } = useAuth();
+  const { login, user, isReady } = useAuth();
 
   const [empId, setEmpId] = useState("");
   const [pwd, setPwd] = useState("");
@@ -21,6 +21,12 @@ export default function Login() {
   const [forgotDialogOpen, setForgotDialogOpen] = useState(false);
 
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (isReady && user) {
+      nav("/dashboard", { replace: true });
+    }
+  }, [isReady, user, nav]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,7 +48,7 @@ export default function Login() {
       }
       toast.success("Welcome back");
       // Always redirect to dashboard - admins can access admin dashboard from profile dropdown
-      nav("/dashboard");
+      nav("/dashboard", { replace: true });
     } catch (error) {
       toast.error(
         error instanceof Error
