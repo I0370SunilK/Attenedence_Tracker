@@ -93,13 +93,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Function to verify and refresh auth state
   const verifyAuth = () => {
+    const persisted = loadSession();
     fetchCurrentUser()
       .then((current) => {
         if (current) {
-          const derivedRole = deriveRole(current, initialSession?.role);
+          const derivedRole = deriveRole(current, persisted?.role ?? initialSession?.role);
           setUser(current);
           setRoleState(derivedRole);
           saveSession(derivedRole, current);
+          setIsReady(true);
+          return;
+        }
+
+        // If server didn't return a current user but we have a persisted session,
+        // keep using the persisted session instead of immediately clearing UI state.
+        if (persisted) {
+          setUser(persisted.user);
+          setRoleState(persisted.role);
           setIsReady(true);
           return;
         }
@@ -110,7 +120,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsReady(true);
       })
       .catch(() => {
-        // Session cache only — employee/attendance data always comes from MongoDB Atlas via API.
+        // If the network call fails, prefer using any persisted session we have.
+        if (persisted) {
+          setUser(persisted.user);
+          setRoleState(persisted.role);
+          setIsReady(true);
+          return;
+        }
         if (initialSession) {
           setIsReady(true);
           return;
